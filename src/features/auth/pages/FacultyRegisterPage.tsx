@@ -29,12 +29,15 @@ export function FacultyRegisterPage() {
   };
 
   return (
-    <section className="w-full max-w-3xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+    <section className="w-full max-w-3xl rounded-lg border border-border bg-surface p-6 shadow-sm sm:p-8">
       <div className="mb-8">
-        <p className="text-sm font-medium text-slate-500">Faculty Portal</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+        <p className="text-sm font-semibold text-accent">Faculty Portal</p>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
           Create faculty account
         </h1>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          Add your profile details to start using the evaluator workspace.
+        </p>
       </div>
 
       <form
@@ -105,11 +108,11 @@ export function FacultyRegisterPage() {
         </div>
       </form>
 
-      <p className="mt-6 text-center text-sm text-slate-600">
+      <p className="mt-6 text-center text-sm text-muted">
         Already registered?{" "}
         <Link
           href="/faculty/login"
-          className="font-semibold text-slate-950 hover:underline"
+          className="font-semibold text-primary hover:underline"
         >
           Login
         </Link>

@@ -13,21 +13,22 @@ export function TextField({
   ...props
 }: TextFieldProps) {
   const fieldId = id ?? props.name;
+  const inputStateClasses = error
+    ? "border-danger bg-danger-soft focus:border-danger focus:ring-danger/15"
+    : "border-border bg-surface focus:border-primary focus:ring-primary/15";
 
   return (
     <div className="space-y-2">
-      <label
-        htmlFor={fieldId}
-        className="block text-sm font-medium text-slate-700"
-      >
+      <label htmlFor={fieldId} className="block text-sm font-medium text-ink">
         {label}
       </label>
       <input
         id={fieldId}
-        className={`h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 disabled:cursor-not-allowed disabled:bg-slate-100 ${className}`}
+        aria-invalid={error ? "true" : "false"}
+        className={`h-11 w-full rounded-md border px-3 text-sm text-ink outline-none transition placeholder:text-muted/70 focus:ring-2 disabled:cursor-not-allowed disabled:bg-surface-muted ${inputStateClasses} ${className}`}
         {...props}
       />
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
     </div>
   );
 }
