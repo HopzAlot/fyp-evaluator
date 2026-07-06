@@ -14,7 +14,7 @@ export function TextField({
 }: TextFieldProps) {
   const fieldId = id ?? props.name;
   const inputStateClasses = error
-    ? "border-danger bg-danger-soft focus:border-danger focus:ring-danger/15"
+    ? "border-danger bg-danger-soft text-danger focus:border-danger focus:ring-danger/20"
     : "border-border bg-surface focus:border-primary focus:ring-primary/15";
 
   return (
@@ -28,7 +28,11 @@ export function TextField({
         className={`h-11 w-full rounded-md border px-3 text-sm text-ink outline-none transition placeholder:text-muted/70 focus:ring-2 disabled:cursor-not-allowed disabled:bg-surface-muted ${inputStateClasses} ${className}`}
         {...props}
       />
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {error ? (
+        <p className="text-sm font-medium text-danger" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

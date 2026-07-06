@@ -23,7 +23,7 @@ export function SelectField({
 }: SelectFieldProps) {
   const fieldId = id ?? props.name;
   const selectStateClasses = error
-    ? "border-danger bg-danger-soft focus:border-danger focus:ring-danger/15"
+    ? "border-danger bg-danger-soft text-danger focus:border-danger focus:ring-danger/20"
     : "border-border bg-surface focus:border-primary focus:ring-primary/15";
 
   return (
@@ -44,7 +44,11 @@ export function SelectField({
           </option>
         ))}
       </select>
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {error ? (
+        <p className="text-sm font-medium text-danger" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
