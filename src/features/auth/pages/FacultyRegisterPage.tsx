@@ -20,7 +20,9 @@ export function FacultyRegisterPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<FacultyRegisterFormValues>();
+  } = useForm<FacultyRegisterFormValues>({
+    mode: "onBlur",
+  });
 
   const onSubmit = (values: FacultyRegisterFormValues) => {
     console.log("Faculty register data", values);

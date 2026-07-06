@@ -14,7 +14,9 @@ export function FacultyLoginPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<FacultyLoginFormValues>();
+  } = useForm<FacultyLoginFormValues>({
+    mode: "onBlur",
+  });
 
   const onSubmit = (values: FacultyLoginFormValues) => {
     console.log("Faculty login data", values);
