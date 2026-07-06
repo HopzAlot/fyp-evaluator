@@ -4,11 +4,7 @@ import { useForm } from "react-hook-form";
 import { SelectField } from "@/components/fields/SelectField";
 import { TextField } from "@/components/fields/TextField";
 import { Button } from "@/components/ui/Button";
-import {
-  departmentOptions,
-  designationOptions,
-  genderOptions,
-} from "@/features/auth/constants/facultyOptions";
+import { genderOptions } from "@/features/auth/constants/authoptions";
 import {
   facultyRegisterValidation,
   type FacultyRegisterFormValues,
@@ -63,15 +59,15 @@ export function FacultyRegisterForm() {
         error={errors.contactNumber?.message}
         {...register("contactNumber", facultyRegisterValidation.contactNumber)}
       />
-      <SelectField
+      <TextField
         label="Department"
-        options={departmentOptions}
+        placeholder="Enter department"
         error={errors.department?.message}
         {...register("department", facultyRegisterValidation.department)}
       />
-      <SelectField
+      <TextField
         label="Designation"
-        options={designationOptions}
+        placeholder="Enter designation"
         error={errors.designation?.message}
         {...register("designation", facultyRegisterValidation.designation)}
       />

@@ -23,8 +23,12 @@ export function SelectField({
 }: SelectFieldProps) {
   const fieldId = id ?? props.name;
   const selectStateClasses = error
-    ? "border-danger bg-danger-soft text-danger focus:border-danger focus:ring-danger/20"
+    ? "border-[var(--danger)] bg-[var(--danger-soft)] text-[var(--danger)] focus:border-[var(--danger)] focus:ring-[var(--danger)]/20"
     : "border-border bg-surface focus:border-primary focus:ring-primary/15";
+  const optionStyle = {
+    backgroundColor: "var(--surface)",
+    color: "var(--ink)",
+  };
 
   return (
     <div className="space-y-2">
@@ -37,15 +41,20 @@ export function SelectField({
         className={`h-11 w-full rounded-md border px-3 text-sm text-ink outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:bg-surface-muted ${selectStateClasses} ${className}`}
         {...props}
       >
-        <option value="">{placeholder}</option>
+        <option value="" style={optionStyle}>
+          {placeholder}
+        </option>
         {options.map((option) => (
-          <option key={option.value} value={option.value}>
+          <option key={option.value} value={option.value} style={optionStyle}>
             {option.label}
           </option>
         ))}
       </select>
       {error ? (
-        <p className="text-sm font-medium text-danger" role="alert">
+        <p
+          className="text-sm font-medium text-[var(--danger)]"
+          role="alert"
+        >
           {error}
         </p>
       ) : null}
