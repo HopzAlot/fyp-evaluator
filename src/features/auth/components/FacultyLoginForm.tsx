@@ -14,7 +14,7 @@ export function FacultyLoginForm() {
     handleSubmit,
     formState: { errors },
   } = useForm<FacultyLoginFormValues>({
-    mode: "onBlur",
+    mode: "onChange",
   });
 
   const onSubmit = (values: FacultyLoginFormValues) => {

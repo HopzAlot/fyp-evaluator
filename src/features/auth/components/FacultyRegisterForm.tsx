@@ -16,7 +16,7 @@ export function FacultyRegisterForm() {
     handleSubmit,
     formState: { errors },
   } = useForm<FacultyRegisterFormValues>({
-    mode: "onBlur",
+    mode: "onChange",
   });
 
   const onSubmit = (values: FacultyRegisterFormValues) => {
