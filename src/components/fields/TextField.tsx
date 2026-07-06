@@ -14,7 +14,7 @@ export function TextField({
 }: TextFieldProps) {
   const fieldId = id ?? props.name;
   const inputStateClasses = error
-    ? "border-[var(--danger)] bg-[var(--danger-soft)] text-[var(--danger)] focus:border-[var(--danger)] focus:ring-[var(--danger)]/20"
+    ? "field-invalid focus:ring-[var(--danger)]/20"
     : "border-border bg-surface focus:border-primary focus:ring-primary/15";
 
   return (
@@ -29,10 +29,7 @@ export function TextField({
         {...props}
       />
       {error ? (
-        <p
-          className="text-sm font-medium text-[var(--danger)]"
-          role="alert"
-        >
+        <p className="field-error-message text-sm font-medium" role="alert">
           {error}
         </p>
       ) : null}

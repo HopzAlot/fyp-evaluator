@@ -23,12 +23,8 @@ export function SelectField({
 }: SelectFieldProps) {
   const fieldId = id ?? props.name;
   const selectStateClasses = error
-    ? "border-[var(--danger)] bg-[var(--danger-soft)] text-[var(--danger)] focus:border-[var(--danger)] focus:ring-[var(--danger)]/20"
+    ? "field-invalid focus:ring-[var(--danger)]/20"
     : "border-border bg-surface focus:border-primary focus:ring-primary/15";
-  const optionStyle = {
-    backgroundColor: "var(--surface)",
-    color: "var(--ink)",
-  };
 
   return (
     <div className="space-y-2">
@@ -38,23 +34,18 @@ export function SelectField({
       <select
         id={fieldId}
         aria-invalid={error ? "true" : "false"}
-        className={`h-11 w-full rounded-md border px-3 text-sm text-ink outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:bg-surface-muted ${selectStateClasses} ${className}`}
+        className={`select-field h-11 w-full rounded-md border px-3 text-sm outline-none transition focus:ring-2 disabled:cursor-not-allowed disabled:bg-surface-muted ${selectStateClasses} ${className}`}
         {...props}
       >
-        <option value="" style={optionStyle}>
-          {placeholder}
-        </option>
+        <option value="">{placeholder}</option>
         {options.map((option) => (
-          <option key={option.value} value={option.value} style={optionStyle}>
+          <option key={option.value} value={option.value}>
             {option.label}
           </option>
         ))}
       </select>
       {error ? (
-        <p
-          className="text-sm font-medium text-[var(--danger)]"
-          role="alert"
-        >
+        <p className="field-error-message text-sm font-medium" role="alert">
           {error}
         </p>
       ) : null}
