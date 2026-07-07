@@ -1,8 +1,9 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { AuthBrand } from "@/components/layout/auth/AuthBrand";
+import { AuthIntro } from "@/components/layout/auth/AuthIntro";
 import { AuthMobileHeader } from "@/components/layout/auth/AuthMobileHeader";
-import { AuthSidePanel } from "@/components/layout/auth/AuthSidePanel";
 
 const authLayoutCopy = {
   login: {
@@ -34,7 +35,10 @@ export default function AuthLayout({
     <main className="min-h-screen bg-background px-4 py-8 text-ink sm:px-6 lg:px-8">
       <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
         <AuthMobileHeader intro={copy} />
-        <AuthSidePanel intro={copy} />
+        <aside className="hidden lg:block">
+          <AuthBrand className="mb-8" />
+          <AuthIntro copy={copy} />
+        </aside>
         <section
           className={`w-full rounded-lg border border-border bg-surface p-6 shadow-sm sm:p-8 ${copy.cardSize}`}
         >
