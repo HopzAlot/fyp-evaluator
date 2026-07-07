@@ -6,7 +6,7 @@ import { Button } from "@/components/main/ui/Button";
 import {
   loginValidation,
   type LoginFormValues,
-} from "@/components/layout/auth/loginValidation";
+} from "@/components/layout/auth/validation/loginValidation";
 
 export function LoginForm() {
   const {

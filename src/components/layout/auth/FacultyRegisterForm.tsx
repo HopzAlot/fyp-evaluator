@@ -8,7 +8,7 @@ import { genderOptions } from "@/components/layout/auth/authOptions";
 import {
   facultyRegisterValidation,
   type FacultyRegisterFormValues,
-} from "@/components/layout/auth/facultyRegisterValidation";
+} from "@/components/layout/auth/validation/facultyRegisterValidation";
 
 export function FacultyRegisterForm() {
   const {
