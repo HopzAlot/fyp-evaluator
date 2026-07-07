@@ -7,7 +7,6 @@ export function LoginPage() {
   return (
     <AuthCard>
       <AuthPageHeader
-        eyebrow="Login Portal"
         title="Login to your account"
         description="Continue into the workspace connected to your account."
       />
