@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import {
   facultyLoginValidation,
   type FacultyLoginFormValues,
-} from "@/features/auth/validation/facultyLoginValidation";
+} from "@/components/layout/auth/facultyLoginValidation";
 
 export function FacultyLoginForm() {
   const {

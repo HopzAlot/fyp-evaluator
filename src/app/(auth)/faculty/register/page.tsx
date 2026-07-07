@@ -1,3 +1,3 @@
-import { FacultyRegisterPage } from "@/features/auth/pages/FacultyRegisterPage";
+import { FacultyRegisterPage } from "@/components/layout/auth/FacultyRegisterPage";
 
 export default FacultyRegisterPage;

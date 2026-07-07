@@ -1,7 +1,7 @@
-import { AuthCard } from "@/features/auth/components/AuthCard";
-import { AuthPageHeader } from "@/features/auth/components/AuthPageHeader";
-import { AuthSwitchLink } from "@/features/auth/components/AuthSwitchLink";
-import { FacultyRegisterForm } from "@/features/auth/components/FacultyRegisterForm";
+import { AuthCard } from "@/components/layout/auth/AuthCard";
+import { AuthPageHeader } from "@/components/layout/auth/AuthPageHeader";
+import { AuthSwitchLink } from "@/components/layout/auth/AuthSwitchLink";
+import { FacultyRegisterForm } from "@/components/layout/auth/FacultyRegisterForm";
 
 export function FacultyRegisterPage() {
   return (

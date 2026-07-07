@@ -1,6 +1,6 @@
-import { AuthBrand } from "@/features/auth/components/AuthBrand";
-import { AuthFeatureTile } from "@/features/auth/components/AuthFeatureTile";
-import { AuthIntro } from "@/features/auth/components/AuthIntro";
+import { AuthBrand } from "@/components/layout/auth/AuthBrand";
+import { AuthFeatureTile } from "@/components/layout/auth/AuthFeatureTile";
+import { AuthIntro } from "@/components/layout/auth/AuthIntro";
 
 const authFeatureTiles = [
   {

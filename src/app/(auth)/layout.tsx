@@ -1,5 +1,5 @@
-import { AuthMobileHeader } from "@/features/auth/components/AuthMobileHeader";
-import { AuthSidePanel } from "@/features/auth/components/AuthSidePanel";
+import { AuthMobileHeader } from "@/components/layout/auth/AuthMobileHeader";
+import { AuthSidePanel } from "@/components/layout/auth/AuthSidePanel";
 
 export default function AuthLayout({
   children,

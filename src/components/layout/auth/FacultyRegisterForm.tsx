@@ -4,11 +4,11 @@ import { useForm } from "react-hook-form";
 import { SelectField } from "@/components/fields/SelectField";
 import { TextField } from "@/components/fields/TextField";
 import { Button } from "@/components/ui/Button";
-import { genderOptions } from "@/features/auth/constants/authoptions";
+import { genderOptions } from "@/components/layout/auth/authOptions";
 import {
   facultyRegisterValidation,
   type FacultyRegisterFormValues,
-} from "@/features/auth/validation/facultyRegisterValidation";
+} from "@/components/layout/auth/facultyRegisterValidation";
 
 export function FacultyRegisterForm() {
   const {

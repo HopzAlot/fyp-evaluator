@@ -1,5 +1,5 @@
-import { AuthBrand } from "@/features/auth/components/AuthBrand";
-import { AuthIntro } from "@/features/auth/components/AuthIntro";
+import { AuthBrand } from "@/components/layout/auth/AuthBrand";
+import { AuthIntro } from "@/components/layout/auth/AuthIntro";
 
 export function AuthMobileHeader() {
   return (
