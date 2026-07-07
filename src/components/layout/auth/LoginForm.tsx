@@ -4,21 +4,21 @@ import { useForm } from "react-hook-form";
 import { TextField } from "@/components/main/fields/TextField";
 import { Button } from "@/components/main/ui/Button";
 import {
-  facultyLoginValidation,
-  type FacultyLoginFormValues,
-} from "@/components/layout/auth/facultyLoginValidation";
+  loginValidation,
+  type LoginFormValues,
+} from "@/components/layout/auth/loginValidation";
 
-export function FacultyLoginForm() {
+export function LoginForm() {
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<FacultyLoginFormValues>({
+  } = useForm<LoginFormValues>({
     mode: "onChange",
   });
 
-  const onSubmit = (values: FacultyLoginFormValues) => {
-    console.log("Faculty login data", {
+  const onSubmit = (values: LoginFormValues) => {
+    console.log("Login data", {
       ...values,
       password: "[hidden]",
     });
@@ -34,16 +34,16 @@ export function FacultyLoginForm() {
       <TextField
         label="Email address"
         type="email"
-        placeholder="name@university.edu"
+        placeholder="Enter your email"
         error={errors.email?.message}
-        {...register("email", facultyLoginValidation.email)}
+        {...register("email", loginValidation.email)}
       />
       <TextField
         label="Password"
         type="password"
         placeholder="Enter password"
         error={errors.password?.message}
-        {...register("password", facultyLoginValidation.password)}
+        {...register("password", loginValidation.password)}
       />
       <Button type="submit" className="w-full">
         Login

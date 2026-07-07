@@ -1,15 +1,15 @@
 import type { RegisterOptions } from "react-hook-form";
 
-export type FacultyLoginFormValues = {
+export type LoginFormValues = {
   email: string;
   password: string;
 };
 
-type FacultyLoginField = keyof FacultyLoginFormValues;
+type LoginField = keyof LoginFormValues;
 
-export const facultyLoginValidation: Record<
-  FacultyLoginField,
-  RegisterOptions<FacultyLoginFormValues>
+export const loginValidation: Record<
+  LoginField,
+  RegisterOptions<LoginFormValues>
 > = {
   email: {
     required: "Email address is required",

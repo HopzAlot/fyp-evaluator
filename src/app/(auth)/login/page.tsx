@@ -1,3 +1,3 @@
-import { FacultyLoginPage } from "@/components/layout/auth/FacultyLoginPage";
+import { LoginPage } from "@/components/layout/auth/LoginPage";
 
-export default FacultyLoginPage;
+export default LoginPage;
