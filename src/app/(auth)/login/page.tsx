@@ -1,5 +1,4 @@
 import { AuthPageHeader } from "@/components/layout/auth/AuthPageHeader";
-import { AuthSwitchLink } from "@/components/layout/auth/AuthSwitchLink";
 import { LoginForm } from "@/components/layout/auth/LoginForm";
 
 export default function LoginPage() {
@@ -10,11 +9,6 @@ export default function LoginPage() {
         description="Continue into the workspace connected to your account."
       />
       <LoginForm />
-      <AuthSwitchLink
-        label="New faculty member?"
-        href="/register"
-        linkText="Register"
-      />
     </>
   );
 }

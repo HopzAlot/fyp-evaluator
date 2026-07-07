@@ -1,5 +1,4 @@
 import { AuthPageHeader } from "@/components/layout/auth/AuthPageHeader";
-import { AuthSwitchLink } from "@/components/layout/auth/AuthSwitchLink";
 import { FacultyRegisterForm } from "@/components/layout/auth/FacultyRegisterForm";
 
 export default function RegisterPage() {
@@ -10,11 +9,6 @@ export default function RegisterPage() {
         description="Add your profile details to start using the evaluator workspace."
       />
       <FacultyRegisterForm />
-      <AuthSwitchLink
-        label="Already registered?"
-        href="/login"
-        linkText="Login"
-      />
     </>
   );
 }
