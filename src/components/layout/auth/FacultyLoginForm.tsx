@@ -1,8 +1,8 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { TextField } from "@/components/fields/TextField";
-import { Button } from "@/components/ui/Button";
+import { TextField } from "@/components/main/fields/TextField";
+import { Button } from "@/components/main/ui/Button";
 import {
   facultyLoginValidation,
   type FacultyLoginFormValues,

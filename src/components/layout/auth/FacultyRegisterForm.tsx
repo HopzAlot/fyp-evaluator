@@ -1,9 +1,9 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { SelectField } from "@/components/fields/SelectField";
-import { TextField } from "@/components/fields/TextField";
-import { Button } from "@/components/ui/Button";
+import { SelectField } from "@/components/main/fields/SelectField";
+import { TextField } from "@/components/main/fields/TextField";
+import { Button } from "@/components/main/ui/Button";
 import { genderOptions } from "@/components/layout/auth/authOptions";
 import {
   facultyRegisterValidation,
