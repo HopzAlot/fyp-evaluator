@@ -1,21 +1,16 @@
 type AuthFeatureTileProps = {
   title: string;
   description: string;
-  tone: "accent" | "highlight";
+  className: string;
 };
 
 export function AuthFeatureTile({
   title,
   description,
-  tone,
+  className,
 }: AuthFeatureTileProps) {
-  const toneClasses =
-    tone === "accent"
-      ? "border-accent bg-accent-soft"
-      : "border-highlight bg-surface";
-
   return (
-    <div className={`border-l-2 px-4 py-3 ${toneClasses}`}>
+    <div className={`border-l-2 px-4 py-3 ${className}`}>
       <p className="text-sm font-semibold text-ink">{title}</p>
       <p className="mt-1 text-sm text-muted">{description}</p>
     </div>

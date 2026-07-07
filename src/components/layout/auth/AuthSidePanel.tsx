@@ -1,25 +1,32 @@
 import { AuthBrand } from "@/components/layout/auth/AuthBrand";
 import { AuthFeatureTile } from "@/components/layout/auth/AuthFeatureTile";
-import { AuthIntro } from "@/components/layout/auth/AuthIntro";
+import {
+  AuthIntro,
+  type AuthIntroCopy,
+} from "@/components/layout/auth/AuthIntro";
 
 const authFeatureTiles = [
   {
     title: "Role based",
     description: "Faculty and admin ready",
-    tone: "accent",
+    className: "border-accent bg-accent-soft",
   },
   {
     title: "Protected",
     description: "RHF powered forms",
-    tone: "highlight",
+    className: "border-highlight bg-surface",
   },
 ] as const;
 
-export function AuthSidePanel() {
+type AuthSidePanelProps = {
+  intro: AuthIntroCopy;
+};
+
+export function AuthSidePanel({ intro }: AuthSidePanelProps) {
   return (
     <aside className="hidden lg:block">
       <AuthBrand className="mb-8" />
-      <AuthIntro />
+      <AuthIntro copy={intro} />
 
       <div className="mt-10 grid max-w-md grid-cols-2 gap-3">
         {authFeatureTiles.map((tile) => (
@@ -27,7 +34,7 @@ export function AuthSidePanel() {
             key={tile.title}
             title={tile.title}
             description={tile.description}
-            tone={tile.tone}
+            className={tile.className}
           />
         ))}
       </div>
