@@ -13,7 +13,7 @@ export function FacultyLoginPage() {
       <FacultyLoginForm />
       <AuthSwitchLink
         label="New faculty member?"
-        href="/faculty/register"
+        href="/register"
         linkText="Register"
       />
     </AuthCard>
