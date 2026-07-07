@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AuthBrand } from "@/components/layout/auth/AuthBrand";
+import { Brand } from "@/components/main/Brand";
 
 const authLayoutCopy = {
   login: {
@@ -40,7 +40,7 @@ export default function AuthLayout({
     <main className="min-h-screen bg-background px-4 py-8 text-ink sm:px-6 lg:px-8">
       <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
         <header className="mx-auto w-full max-w-3xl lg:hidden">
-          <AuthBrand />
+          <Brand />
           <p className="mt-5 text-sm font-semibold uppercase text-accent">
             {copy.eyebrow}
           </p>
@@ -50,7 +50,7 @@ export default function AuthLayout({
         </header>
 
         <aside className="hidden lg:block">
-          <AuthBrand className="mb-8" />
+          <Brand className="mb-8" />
           <div className="max-w-md">
             <p className="mb-4 text-sm font-semibold uppercase text-accent">
               {copy.eyebrow}
