@@ -1,3 +1,20 @@
-import { LoginPage } from "@/components/layout/auth/LoginPage";
+import { AuthPageHeader } from "@/components/layout/auth/AuthPageHeader";
+import { AuthSwitchLink } from "@/components/layout/auth/AuthSwitchLink";
+import { LoginForm } from "@/components/layout/auth/LoginForm";
 
-export default LoginPage;
+export default function LoginPage() {
+  return (
+    <>
+      <AuthPageHeader
+        title="Login to your account"
+        description="Continue into the workspace connected to your account."
+      />
+      <LoginForm />
+      <AuthSwitchLink
+        label="New faculty member?"
+        href="/register"
+        linkText="Register"
+      />
+    </>
+  );
+}
