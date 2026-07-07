@@ -6,9 +6,21 @@ import { FormTextField } from "@/components/main/fields/FormTextField";
 import { Button } from "@/components/main/ui/Button";
 import { genderOptions } from "@/components/layout/auth/authOptions";
 import {
-  facultyRegisterValidation,
-  type FacultyRegisterFormValues,
-} from "@/components/layout/auth/validation/facultyRegisterValidation";
+  emailValidation,
+  noHtmlValidation,
+  passwordValidation,
+} from "@/utils/validation/formValidation";
+
+type FacultyRegisterFormValues = {
+  fullName: string;
+  email: string;
+  contactNumber: string;
+  department: string;
+  designation: string;
+  gender: string;
+  password: string;
+  confirmPassword: string;
+};
 
 export function FacultyRegisterForm() {
   const {
@@ -52,14 +64,21 @@ export function FacultyRegisterForm() {
         name="fullName"
         label="Full name"
         placeholder="Enter name"
-        rules={facultyRegisterValidation.fullName}
+        rules={{
+          required: "Full name is required",
+          minLength: {
+            value: 3,
+            message: "Full name must be at least 3 characters",
+          },
+          validate: noHtmlValidation,
+        }}
       />
       <FormSelectField
         control={control}
         name="gender"
         label="Gender"
         options={genderOptions}
-        rules={facultyRegisterValidation.gender}
+        rules={{ required: "Gender is required" }}
       />
       <FormTextField
         control={control}
@@ -67,7 +86,7 @@ export function FacultyRegisterForm() {
         label="Email address"
         type="email"
         placeholder="name@university.edu"
-        rules={facultyRegisterValidation.email}
+        rules={emailValidation}
       />
       <FormTextField
         control={control}
@@ -75,21 +94,34 @@ export function FacultyRegisterForm() {
         label="Contact number"
         type="tel"
         placeholder="03XX XXXXXXX"
-        rules={facultyRegisterValidation.contactNumber}
+        rules={{
+          required: "Contact number is required",
+          pattern: {
+            value: /^03\d{2}\s?\d{7}$/,
+            message: "Use a valid Pakistani mobile number",
+          },
+          validate: noHtmlValidation,
+        }}
       />
       <FormTextField
         control={control}
         name="department"
         label="Department"
         placeholder="Enter department"
-        rules={facultyRegisterValidation.department}
+        rules={{
+          required: "Department is required",
+          validate: noHtmlValidation,
+        }}
       />
       <FormTextField
         control={control}
         name="designation"
         label="Designation"
         placeholder="Enter designation"
-        rules={facultyRegisterValidation.designation}
+        rules={{
+          required: "Designation is required",
+          validate: noHtmlValidation,
+        }}
       />
       <FormTextField
         control={control}
@@ -97,7 +129,7 @@ export function FacultyRegisterForm() {
         label="Password"
         type="password"
         placeholder="Create password"
-        rules={facultyRegisterValidation.password}
+        rules={passwordValidation}
       />
       <FormTextField
         control={control}
@@ -106,7 +138,7 @@ export function FacultyRegisterForm() {
         type="password"
         placeholder="Confirm password"
         rules={{
-          ...facultyRegisterValidation.confirmPassword,
+          required: "Confirm password is required",
           validate: (value) =>
             value === getValues("password") || "Passwords do not match",
         }}

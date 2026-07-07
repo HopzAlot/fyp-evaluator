@@ -4,9 +4,14 @@ import { useForm } from "react-hook-form";
 import { FormTextField } from "@/components/main/fields/FormTextField";
 import { Button } from "@/components/main/ui/Button";
 import {
-  loginValidation,
-  type LoginFormValues,
-} from "@/components/layout/auth/validation/loginValidation";
+  emailValidation,
+  passwordValidation,
+} from "@/utils/validation/formValidation";
+
+type LoginFormValues = {
+  email: string;
+  password: string;
+};
 
 export function LoginForm() {
   const {
@@ -44,7 +49,7 @@ export function LoginForm() {
         label="Email address"
         type="email"
         placeholder="Enter your email"
-        rules={loginValidation.email}
+        rules={emailValidation}
       />
       <FormTextField
         control={control}
@@ -52,7 +57,7 @@ export function LoginForm() {
         label="Password"
         type="password"
         placeholder="Enter password"
-        rules={loginValidation.password}
+        rules={passwordValidation}
       />
       <Button
         type="submit"
