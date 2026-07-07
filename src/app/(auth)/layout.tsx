@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Brand } from "@/components/main/Brand";
+import { Brand } from "@/components/ui/Brand";
 
 const authLayoutCopy = {
   login: {

@@ -2,10 +2,10 @@
 
 import { useForm } from "react-hook-form";
 import { matchIsValidTel } from "mui-tel-input";
-import { FormPhoneField } from "@/components/main/fields/FormPhoneField";
-import { FormSelectField } from "@/components/main/fields/FormSelectField";
-import { FormTextField } from "@/components/main/fields/FormTextField";
-import { Button } from "@/components/main/ui/Button";
+import { FormPhoneField } from "@/components/fields/FormPhoneField";
+import { FormSelectField } from "@/components/fields/FormSelectField";
+import { FormTextField } from "@/components/fields/FormTextField";
+import { Button } from "@/components/ui/Button";
 import { genderOptions } from "@/components/layout/auth/authOptions";
 import {
   emailValidation,

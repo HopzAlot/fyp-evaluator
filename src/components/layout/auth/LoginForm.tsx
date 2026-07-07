@@ -1,8 +1,8 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { FormTextField } from "@/components/main/fields/FormTextField";
-import { Button } from "@/components/main/ui/Button";
+import { FormTextField } from "@/components/fields/FormTextField";
+import { Button } from "@/components/ui/Button";
 import {
   emailValidation,
   passwordValidation,
