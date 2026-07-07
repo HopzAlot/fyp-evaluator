@@ -1,7 +1,7 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { TextField } from "@/components/main/fields/TextField";
+import { FormTextField } from "@/components/main/fields/FormTextField";
 import { Button } from "@/components/main/ui/Button";
 import {
   loginValidation,
@@ -10,11 +10,15 @@ import {
 
 export function LoginForm() {
   const {
-    register,
+    control,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { isSubmitting },
   } = useForm<LoginFormValues>({
+    defaultValues: {
+      email: "",
+      password: "",
+    },
     mode: "onChange",
   });
 
@@ -34,19 +38,21 @@ export function LoginForm() {
       noValidate
       onSubmit={handleSubmit(onSubmit)}
     >
-      <TextField
+      <FormTextField
+        control={control}
+        name="email"
         label="Email address"
         type="email"
         placeholder="Enter your email"
-        error={errors.email?.message}
-        {...register("email", loginValidation.email)}
+        rules={loginValidation.email}
       />
-      <TextField
+      <FormTextField
+        control={control}
+        name="password"
         label="Password"
         type="password"
         placeholder="Enter password"
-        error={errors.password?.message}
-        {...register("password", loginValidation.password)}
+        rules={loginValidation.password}
       />
       <Button
         type="submit"

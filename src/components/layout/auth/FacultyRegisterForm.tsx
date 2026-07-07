@@ -1,8 +1,8 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { SelectField } from "@/components/main/fields/SelectField";
-import { TextField } from "@/components/main/fields/TextField";
+import { FormSelectField } from "@/components/main/fields/FormSelectField";
+import { FormTextField } from "@/components/main/fields/FormTextField";
 import { Button } from "@/components/main/ui/Button";
 import { genderOptions } from "@/components/layout/auth/authOptions";
 import {
@@ -12,15 +12,24 @@ import {
 
 export function FacultyRegisterForm() {
   const {
-    register,
+    control,
     handleSubmit,
     getValues,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { isSubmitting },
   } = useForm<FacultyRegisterFormValues>({
+    defaultValues: {
+      fullName: "",
+      gender: "",
+      email: "",
+      contactNumber: "",
+      department: "",
+      designation: "",
+      password: "",
+      confirmPassword: "",
+    },
     mode: "onChange",
   });
-
   const onSubmit = async (values: FacultyRegisterFormValues) => {
     await new Promise((resolve) => setTimeout(resolve, 500));
     console.log("Faculty register data", {
@@ -38,61 +47,69 @@ export function FacultyRegisterForm() {
       noValidate
       onSubmit={handleSubmit(onSubmit)}
     >
-      <TextField
+      <FormTextField
+        control={control}
+        name="fullName"
         label="Full name"
         placeholder="Enter name"
-        error={errors.fullName?.message}
-        {...register("fullName", facultyRegisterValidation.fullName)}
+        rules={facultyRegisterValidation.fullName}
       />
-      <SelectField
+      <FormSelectField
+        control={control}
+        name="gender"
         label="Gender"
         options={genderOptions}
-        error={errors.gender?.message}
-        {...register("gender", facultyRegisterValidation.gender)}
+        rules={facultyRegisterValidation.gender}
       />
-      <TextField
+      <FormTextField
+        control={control}
+        name="email"
         label="Email address"
         type="email"
         placeholder="name@university.edu"
-        error={errors.email?.message}
-        {...register("email", facultyRegisterValidation.email)}
+        rules={facultyRegisterValidation.email}
       />
-      <TextField
+      <FormTextField
+        control={control}
+        name="contactNumber"
         label="Contact number"
         type="tel"
         placeholder="03XX XXXXXXX"
-        error={errors.contactNumber?.message}
-        {...register("contactNumber", facultyRegisterValidation.contactNumber)}
+        rules={facultyRegisterValidation.contactNumber}
       />
-      <TextField
+      <FormTextField
+        control={control}
+        name="department"
         label="Department"
         placeholder="Enter department"
-        error={errors.department?.message}
-        {...register("department", facultyRegisterValidation.department)}
+        rules={facultyRegisterValidation.department}
       />
-      <TextField
+      <FormTextField
+        control={control}
+        name="designation"
         label="Designation"
         placeholder="Enter designation"
-        error={errors.designation?.message}
-        {...register("designation", facultyRegisterValidation.designation)}
+        rules={facultyRegisterValidation.designation}
       />
-      <TextField
+      <FormTextField
+        control={control}
+        name="password"
         label="Password"
         type="password"
         placeholder="Create password"
-        error={errors.password?.message}
-        {...register("password", facultyRegisterValidation.password)}
+        rules={facultyRegisterValidation.password}
       />
-      <TextField
+      <FormTextField
+        control={control}
+        name="confirmPassword"
         label="Confirm password"
         type="password"
         placeholder="Confirm password"
-        error={errors.confirmPassword?.message}
-        {...register("confirmPassword", {
+        rules={{
           ...facultyRegisterValidation.confirmPassword,
           validate: (value) =>
             value === getValues("password") || "Passwords do not match",
-        })}
+        }}
       />
 
       <div className="sm:col-span-2">
