@@ -1,6 +1,8 @@
 "use client";
 
 import { useForm } from "react-hook-form";
+import { matchIsValidTel } from "mui-tel-input";
+import { FormPhoneField } from "@/components/main/fields/FormPhoneField";
 import { FormSelectField } from "@/components/main/fields/FormSelectField";
 import { FormTextField } from "@/components/main/fields/FormTextField";
 import { Button } from "@/components/main/ui/Button";
@@ -88,19 +90,19 @@ export function FacultyRegisterForm() {
         placeholder="name@university.edu"
         rules={emailValidation}
       />
-      <FormTextField
+      <FormPhoneField
         control={control}
         name="contactNumber"
         label="Contact number"
-        type="tel"
-        placeholder="03XX XXXXXXX"
+        defaultCountry="PK"
+        placeholder="Enter contact number"
         rules={{
           required: "Contact number is required",
-          pattern: {
-            value: /^03\d{2}\s?\d{7}$/,
-            message: "Use a valid Pakistani mobile number",
+          validate: {
+            noHtml: noHtmlValidation,
+            validPhone: (value) =>
+              matchIsValidTel(value) || "Enter a valid contact number",
           },
-          validate: noHtmlValidation,
         }}
       />
       <FormTextField
