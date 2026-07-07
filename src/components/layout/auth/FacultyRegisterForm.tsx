@@ -14,16 +14,21 @@ export function FacultyRegisterForm() {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    getValues,
+    reset,
+    formState: { errors, isSubmitting },
   } = useForm<FacultyRegisterFormValues>({
     mode: "onChange",
   });
 
-  const onSubmit = (values: FacultyRegisterFormValues) => {
+  const onSubmit = async (values: FacultyRegisterFormValues) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
     console.log("Faculty register data", {
       ...values,
       password: "[hidden]",
+      confirmPassword: "[hidden]",
     });
+    reset();
   };
 
   return (
@@ -39,11 +44,11 @@ export function FacultyRegisterForm() {
         error={errors.fullName?.message}
         {...register("fullName", facultyRegisterValidation.fullName)}
       />
-      <TextField
-        label="Faculty ID"
-        placeholder="Enter faculty ID"
-        error={errors.facultyId?.message}
-        {...register("facultyId", facultyRegisterValidation.facultyId)}
+      <SelectField
+        label="Gender"
+        options={genderOptions}
+        error={errors.gender?.message}
+        {...register("gender", facultyRegisterValidation.gender)}
       />
       <TextField
         label="Email address"
@@ -71,12 +76,6 @@ export function FacultyRegisterForm() {
         error={errors.designation?.message}
         {...register("designation", facultyRegisterValidation.designation)}
       />
-      <SelectField
-        label="Gender"
-        options={genderOptions}
-        error={errors.gender?.message}
-        {...register("gender", facultyRegisterValidation.gender)}
-      />
       <TextField
         label="Password"
         type="password"
@@ -84,9 +83,25 @@ export function FacultyRegisterForm() {
         error={errors.password?.message}
         {...register("password", facultyRegisterValidation.password)}
       />
+      <TextField
+        label="Confirm password"
+        type="password"
+        placeholder="Confirm password"
+        error={errors.confirmPassword?.message}
+        {...register("confirmPassword", {
+          ...facultyRegisterValidation.confirmPassword,
+          validate: (value) =>
+            value === getValues("password") || "Passwords do not match",
+        })}
+      />
 
       <div className="sm:col-span-2">
-        <Button type="submit" className="w-full">
+        <Button
+          type="submit"
+          className="w-full"
+          loading={isSubmitting}
+          loadingText="Registering"
+        >
           Register
         </Button>
       </div>

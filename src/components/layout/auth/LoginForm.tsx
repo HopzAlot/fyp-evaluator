@@ -12,16 +12,19 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    reset,
+    formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     mode: "onChange",
   });
 
-  const onSubmit = (values: LoginFormValues) => {
+  const onSubmit = async (values: LoginFormValues) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
     console.log("Login data", {
       ...values,
       password: "[hidden]",
     });
+    reset();
   };
 
   return (
@@ -45,7 +48,12 @@ export function LoginForm() {
         error={errors.password?.message}
         {...register("password", loginValidation.password)}
       />
-      <Button type="submit" className="w-full">
+      <Button
+        type="submit"
+        className="w-full"
+        loading={isSubmitting}
+        loadingText="Logging in"
+      >
         Login
       </Button>
     </form>

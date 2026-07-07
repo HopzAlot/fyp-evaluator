@@ -2,13 +2,13 @@ import type { RegisterOptions } from "react-hook-form";
 
 export type FacultyRegisterFormValues = {
   fullName: string;
-  facultyId: string;
   email: string;
   contactNumber: string;
   department: string;
   designation: string;
   gender: string;
   password: string;
+  confirmPassword: string;
 };
 
 type FacultyRegisterField = keyof FacultyRegisterFormValues;
@@ -23,9 +23,6 @@ export const facultyRegisterValidation: Record<
       value: 3,
       message: "Full name must be at least 3 characters",
     },
-  },
-  facultyId: {
-    required: "Faculty ID is required",
   },
   email: {
     required: "Email address is required",
@@ -56,5 +53,8 @@ export const facultyRegisterValidation: Record<
       value: 8,
       message: "Password must be at least 8 characters",
     },
+  },
+  confirmPassword: {
+    required: "Confirm password is required",
   },
 };
