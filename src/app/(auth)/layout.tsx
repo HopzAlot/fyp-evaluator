@@ -38,7 +38,7 @@ export default function AuthLayout({
 
   return (
     <main className="min-h-screen bg-background px-4 py-8 text-ink sm:px-6 lg:px-8">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
+      <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center gap-10 lg:grid-cols-[0.6fr_1.1fr]">
         <header className="mx-auto w-full max-w-3xl lg:hidden">
           <Brand />
           <p className="mt-5 text-sm font-semibold uppercase text-accent">
