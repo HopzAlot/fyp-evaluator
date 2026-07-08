@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { EvaluationPhaseTabs } from "@/components/layout/projects/EvaluationPhaseTabs";
 import { StudentEvaluationPanel } from "@/components/layout/projects/StudentEvaluationPanel";
 import {
   evaluationCriteria,
@@ -46,13 +45,11 @@ export default async function EvaluationPage({ params }: EvaluationPageProps) {
         </div>
       </section>
 
-      <EvaluationPhaseTabs
-        phases={evaluationPhases}
-        activePhase={project.phase}
-      />
       <StudentEvaluationPanel
         students={project.members}
         criteria={evaluationCriteria}
+        phases={evaluationPhases}
+        initialPhase={project.phase}
       />
     </div>
   );
