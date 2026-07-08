@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { matchIsValidTel } from "mui-tel-input";
 import { FormPhoneField } from "@/components/fields/FormPhoneField";
@@ -7,6 +9,7 @@ import { FormSelectField } from "@/components/fields/FormSelectField";
 import { FormTextField } from "@/components/fields/FormTextField";
 import { Button } from "@/components/ui/Button";
 import { genderOptions } from "@/components/layout/auth/authOptions";
+import type { AuthResponse } from "@/types/auth";
 import {
   emailValidation,
   noHtmlValidation,
@@ -25,11 +28,12 @@ type FacultyRegisterFormValues = {
 };
 
 export function FacultyRegisterForm() {
+  const router = useRouter();
+  const [formError, setFormError] = useState("");
   const {
     control,
     handleSubmit,
     getValues,
-    reset,
     formState: { isSubmitting },
   } = useForm<FacultyRegisterFormValues>({
     defaultValues: {
@@ -45,13 +49,24 @@ export function FacultyRegisterForm() {
     mode: "onChange",
   });
   const onSubmit = async (values: FacultyRegisterFormValues) => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    console.log("Faculty register data", {
-      ...values,
-      password: "[hidden]",
-      confirmPassword: "[hidden]",
+    setFormError("");
+
+    const response = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(values),
     });
-    reset();
+
+    const data = (await response.json()) as Partial<AuthResponse> & {
+      message?: string;
+    };
+
+    if (!response.ok) {
+      setFormError(data.message ?? "Unable to register");
+      return;
+    }
+
+    router.push("/dashboard");
   };
 
   return (
@@ -147,6 +162,9 @@ export function FacultyRegisterForm() {
       />
 
       <div className="sm:col-span-2">
+        {formError ? (
+          <p className="mb-4 text-sm font-medium text-danger">{formError}</p>
+        ) : null}
         <Button
           type="submit"
           className="w-full"

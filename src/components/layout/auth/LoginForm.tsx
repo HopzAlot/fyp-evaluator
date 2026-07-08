@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { FormTextField } from "@/components/fields/FormTextField";
 import { Button } from "@/components/ui/Button";
+import type { AuthResponse } from "@/types/auth";
 import {
   emailValidation,
   passwordValidation,
@@ -14,10 +17,11 @@ type LoginFormValues = {
 };
 
 export function LoginForm() {
+  const router = useRouter();
+  const [formError, setFormError] = useState("");
   const {
     control,
     handleSubmit,
-    reset,
     formState: { isSubmitting },
   } = useForm<LoginFormValues>({
     defaultValues: {
@@ -28,12 +32,24 @@ export function LoginForm() {
   });
 
   const onSubmit = async (values: LoginFormValues) => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    console.log("Login data", {
-      ...values,
-      password: "[hidden]",
+    setFormError("");
+
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(values),
     });
-    reset();
+
+    const data = (await response.json()) as Partial<AuthResponse> & {
+      message?: string;
+    };
+
+    if (!response.ok) {
+      setFormError(data.message ?? "Unable to login");
+      return;
+    }
+
+    router.push("/dashboard");
   };
 
   return (
@@ -59,6 +75,9 @@ export function LoginForm() {
         placeholder="Enter password"
         rules={passwordValidation}
       />
+      {formError ? (
+        <p className="text-sm font-medium text-danger">{formError}</p>
+      ) : null}
       <Button
         type="submit"
         className="w-full"
