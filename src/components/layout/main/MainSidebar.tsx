@@ -7,7 +7,6 @@ import { useMainLayout } from "@/components/layout/main/MainLayoutContext";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard" },
-  { label: "Evaluations", href: "/dashboard/evaluations" },
   { label: "Projects", href: "/dashboard/projects" },
   { label: "Faculty", href: "/dashboard/faculty" },
 ];
