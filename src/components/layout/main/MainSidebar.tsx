@@ -7,7 +7,7 @@ import { useMainLayout } from "@/components/layout/main/MainLayoutContext";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard" },
-  { label: "Projects", href: "/dashboard/projects" },
+  { label: "Projects", href: "/projects" },
   { label: "Faculty", href: "/dashboard/faculty" },
 ];
 
@@ -32,7 +32,9 @@ export function MainSidebar() {
 
         <nav className="mt-8 space-y-1">
           {navItems.map((item) => {
-            const active = pathname === item.href;
+            const active =
+              pathname === item.href ||
+              (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
             return (
               <Link
