@@ -1,5 +1,12 @@
 export type ProjectStatus = "Ready" | "In Review" | "Submitted";
 
+export type Student = {
+  id: string;
+  name: string;
+  rollNo: string;
+  progress: number;
+};
+
 export type Project = {
   id: string;
   title: string;
@@ -8,7 +15,7 @@ export type Project = {
   phase: string;
   status: ProjectStatus;
   progress: number;
-  members: string[];
+  members: Student[];
   lastUpdated: string;
 };
 
@@ -21,7 +28,17 @@ export const projects: Project[] = [
     phase: "Synopsis",
     status: "In Review",
     progress: 29,
-    members: ["Omar Siddiqui", "Areeba Khan", "Saad Latif", "Hina Aslam"],
+    members: [
+      {
+        id: "omar-siddiqui",
+        name: "Omar Siddiqui",
+        rollNo: "CS-041",
+        progress: 29,
+      },
+      { id: "areeba-khan", name: "Areeba Khan", rollNo: "CS-042", progress: 0 },
+      { id: "saad-latif", name: "Saad Latif", rollNo: "CS-043", progress: 0 },
+      { id: "hina-aslam", name: "Hina Aslam", rollNo: "CS-044", progress: 0 },
+    ],
     lastUpdated: "Today",
   },
   {
@@ -32,7 +49,11 @@ export const projects: Project[] = [
     phase: "Progress",
     status: "Ready",
     progress: 54,
-    members: ["Maham Raza", "Bilal Ahmed", "Taha Noor"],
+    members: [
+      { id: "maham-raza", name: "Maham Raza", rollNo: "SE-021", progress: 54 },
+      { id: "bilal-ahmed", name: "Bilal Ahmed", rollNo: "SE-022", progress: 48 },
+      { id: "taha-noor", name: "Taha Noor", rollNo: "SE-023", progress: 51 },
+    ],
     lastUpdated: "Yesterday",
   },
   {
@@ -43,7 +64,16 @@ export const projects: Project[] = [
     phase: "Demo",
     status: "Submitted",
     progress: 72,
-    members: ["Zain Ali", "Noor Fatima", "Usman Tariq"],
+    members: [
+      { id: "zain-ali", name: "Zain Ali", rollNo: "IT-013", progress: 72 },
+      {
+        id: "noor-fatima",
+        name: "Noor Fatima",
+        rollNo: "IT-014",
+        progress: 68,
+      },
+      { id: "usman-tariq", name: "Usman Tariq", rollNo: "IT-015", progress: 74 },
+    ],
     lastUpdated: "2 days ago",
   },
   {
@@ -54,7 +84,11 @@ export const projects: Project[] = [
     phase: "Final",
     status: "Ready",
     progress: 88,
-    members: ["Dua Sheikh", "Hassan Rauf", "Muneeb Khan"],
+    members: [
+      { id: "dua-sheikh", name: "Dua Sheikh", rollNo: "SE-071", progress: 88 },
+      { id: "hassan-rauf", name: "Hassan Rauf", rollNo: "SE-072", progress: 84 },
+      { id: "muneeb-khan", name: "Muneeb Khan", rollNo: "SE-073", progress: 82 },
+    ],
     lastUpdated: "3 days ago",
   },
 ];
