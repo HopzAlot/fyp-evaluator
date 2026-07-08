@@ -1,6 +1,18 @@
 import type { ReactNode } from "react";
-import { MainLayoutShell } from "@/components/layout/main/MainLayoutShell";
+import { MainAppBar } from "@/components/layout/main/MainAppBar";
+import { MainLayoutProvider } from "@/components/layout/main/MainLayoutContext";
+import { MainSidebar } from "@/components/layout/main/MainSidebar";
 
 export default function MainLayout({ children }: { children: ReactNode }) {
-  return <MainLayoutShell>{children}</MainLayoutShell>;
+  return (
+    <MainLayoutProvider>
+      <div className="min-h-screen bg-background text-ink lg:grid lg:grid-cols-[18rem_1fr]">
+        <MainSidebar />
+        <div className="min-w-0">
+          <MainAppBar />
+          <main className="px-4 py-6 sm:px-6">{children}</main>
+        </div>
+      </div>
+    </MainLayoutProvider>
+  );
 }
