@@ -10,7 +10,7 @@ export function AuthPageHeader({
   eyebrow,
 }: AuthPageHeaderProps) {
   return (
-    <div className="mb-8">
+    <div className="mb-9">
       <p className="text-sm font-semibold text-accent">{eyebrow}</p>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
         {title}
