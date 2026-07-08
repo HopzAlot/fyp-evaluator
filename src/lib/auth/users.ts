@@ -1,18 +1,31 @@
 import bcrypt from "bcryptjs";
 import { ObjectId, type Collection, type OptionalId } from "mongodb";
 import { getDatabase } from "@/lib/auth/mongodb";
-import type { AuthUser, RegisterFacultyRequest, UserRole } from "@/types/auth";
+import type {
+  AuthUser,
+  RegisterFacultyRequest,
+  UserRole,
+  UserStatus,
+} from "@/types/auth";
 
 type UserDocument = {
   _id: ObjectId;
   email: string;
-  fullName: string;
   role: UserRole;
+  status: UserStatus;
   passwordHash: string;
-  contactNumber?: string;
-  department?: string;
-  designation?: string;
-  gender?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type FacultyDocument = {
+  _id: ObjectId;
+  userId: ObjectId;
+  fullName: string;
+  contactNumber: string;
+  department: string;
+  designation: string;
+  gender: string;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -24,8 +37,16 @@ async function getUsersCollection(): Promise<Collection<UserDocument>> {
   return collection;
 }
 
+async function getFacultiesCollection(): Promise<Collection<FacultyDocument>> {
+  const database = await getDatabase();
+  const collection = database.collection<FacultyDocument>("faculties");
+  await collection.createIndex({ userId: 1 }, { unique: true });
+  return collection;
+}
+
 export async function createFacultyUser(values: RegisterFacultyRequest) {
   const users = await getUsersCollection();
+  const faculties = await getFacultiesCollection();
   const email = values.email.toLowerCase().trim();
   const existingUser = await users.findOne({ email });
 
@@ -36,23 +57,36 @@ export async function createFacultyUser(values: RegisterFacultyRequest) {
   const now = new Date();
   const user: OptionalId<UserDocument> = {
     email,
-    fullName: values.fullName.trim(),
     role: "faculty",
-    contactNumber: values.contactNumber.trim(),
-    department: values.department.trim(),
-    designation: values.designation.trim(),
-    gender: values.gender,
+    status: "inactive",
     passwordHash: await bcrypt.hash(values.password, 12),
     createdAt: now,
     updatedAt: now,
   };
 
-  const result = await users.insertOne(user as UserDocument);
+  const userResult = await users.insertOne(user as UserDocument);
+  const faculty: OptionalId<FacultyDocument> = {
+    userId: userResult.insertedId,
+    fullName: values.fullName.trim(),
+    contactNumber: values.contactNumber.trim(),
+    department: values.department.trim(),
+    designation: values.designation.trim(),
+    gender: values.gender,
+    createdAt: now,
+    updatedAt: now,
+  };
 
-  return toPublicUser({
-    ...user,
-    _id: result.insertedId,
-  } as UserDocument);
+  try {
+    const facultyResult = await faculties.insertOne(faculty as FacultyDocument);
+
+    return toPublicUser(
+      { ...user, _id: userResult.insertedId } as UserDocument,
+      { ...faculty, _id: facultyResult.insertedId } as FacultyDocument,
+    );
+  } catch (error) {
+    await users.deleteOne({ _id: userResult.insertedId });
+    throw error;
+  }
 }
 
 export async function authenticateUser(email: string, password: string) {
@@ -65,7 +99,11 @@ export async function authenticateUser(email: string, password: string) {
 
   const passwordMatches = await bcrypt.compare(password, user.passwordHash);
 
-  return passwordMatches ? toPublicUser(user) : null;
+  if (!passwordMatches) {
+    return null;
+  }
+
+  return hydratePublicUser(user);
 }
 
 export async function getUserById(userId: string) {
@@ -76,18 +114,30 @@ export async function getUserById(userId: string) {
   const users = await getUsersCollection();
   const user = await users.findOne({ _id: new ObjectId(userId) });
 
-  return user ? toPublicUser(user) : null;
+  return user ? hydratePublicUser(user) : null;
 }
 
-function toPublicUser(user: UserDocument): AuthUser {
+async function hydratePublicUser(user: UserDocument) {
+  if (user.role !== "faculty") {
+    return toPublicUser(user);
+  }
+
+  const faculties = await getFacultiesCollection();
+  const faculty = await faculties.findOne({ userId: user._id });
+
+  return toPublicUser(user, faculty ?? undefined);
+}
+
+function toPublicUser(user: UserDocument, faculty?: FacultyDocument): AuthUser {
   return {
     id: user._id.toString(),
     email: user.email,
-    fullName: user.fullName,
     role: user.role,
-    contactNumber: user.contactNumber,
-    department: user.department,
-    designation: user.designation,
-    gender: user.gender,
+    status: user.status,
+    fullName: faculty?.fullName,
+    contactNumber: faculty?.contactNumber,
+    department: faculty?.department,
+    designation: faculty?.designation,
+    gender: faculty?.gender,
   };
 }

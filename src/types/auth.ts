@@ -1,10 +1,12 @@
 export type UserRole = "admin" | "faculty";
+export type UserStatus = "active" | "inactive";
 
 export type AuthUser = {
   id: string;
   email: string;
-  fullName: string;
   role: UserRole;
+  status: UserStatus;
+  fullName?: string;
   contactNumber?: string;
   department?: string;
   designation?: string;
