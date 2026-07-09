@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMainLayout } from "@/components/layout/main/MainLayoutContext";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -13,6 +14,10 @@ const pageCopy = {
     title: "Projects",
     description: "Review assigned projects and evaluations",
   },
+  profile: {
+    title: "Profile",
+    description: "View your account and faculty information",
+  },
 };
 
 export function MainAppBar() {
@@ -21,7 +26,9 @@ export function MainAppBar() {
   const { loading, logout, user } = useAuth();
   const copy = pathname.startsWith("/projects")
     ? pageCopy.projects
-    : pageCopy.dashboard;
+    : pathname.startsWith("/profile")
+      ? pageCopy.profile
+      : pageCopy.dashboard;
   const displayName = user?.fullName ?? user?.email ?? "Loading";
   const initials = displayName
     .split(" ")
@@ -49,17 +56,39 @@ export function MainAppBar() {
         </div>
 
         <div className="hidden items-center gap-3 sm:flex">
-          <div className="text-right">
-            <p className="text-sm font-semibold text-ink">
-              {loading ? "Loading user" : displayName}
-            </p>
-            <p className="text-xs text-muted">
-              {user?.email ?? "Checking session"}
-            </p>
-          </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-sm font-semibold text-white">
+          <Link
+            href="/profile"
+            className="flex items-center gap-3 rounded-md px-2 py-1 transition hover:bg-surface-muted"
+          >
+            <div className="text-right">
+              <p className="text-sm font-semibold text-ink">
+                {loading ? "Loading user" : displayName}
+              </p>
+              <p className="text-xs text-muted">
+                {user?.email ?? "Checking session"}
+              </p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-sm font-semibold text-white">
+              {loading ? "--" : initials}
+            </div>
+          </Link>
+          <button
+            type="button"
+            onClick={logout}
+            className="h-10 rounded-md border border-border px-3 text-sm font-semibold text-ink transition hover:bg-surface-muted"
+          >
+            Logout
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 sm:hidden">
+          <Link
+            href="/profile"
+            className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-sm font-semibold text-white"
+            aria-label="Open profile"
+          >
             {loading ? "--" : initials}
-          </div>
+          </Link>
           <button
             type="button"
             onClick={logout}
