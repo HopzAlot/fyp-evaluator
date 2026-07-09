@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { signAuthToken } from "@/lib/auth/jwt";
-import { setAuthCookie } from "@/lib/auth/session";
 import { createFacultyUser } from "@/services/authService";
 import type { RegisterFacultyRequest } from "@/types/auth";
 import { validateFacultyRegisterPayload } from "@/utils/validation/authValidation";
@@ -23,14 +21,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const token = signAuthToken({
-      userId: user.id,
-      role: user.role,
-      status: user.status,
-    });
-    await setAuthCookie(token);
-
-    return NextResponse.json({ user }, { status: 201 });
+    return NextResponse.json(
+      {
+        message: "Registration successful. Please login after admin approval.",
+        user,
+      },
+      { status: 201 },
+    );
   } catch (error) {
     console.error("Register error", error);
     return NextResponse.json(

@@ -9,7 +9,6 @@ import { FormSelectField } from "@/components/fields/FormSelectField";
 import { FormTextField } from "@/components/fields/FormTextField";
 import { Button } from "@/components/ui/Button";
 import { genderOptions } from "@/components/layout/auth/authOptions";
-import type { AuthResponse } from "@/types/auth";
 import {
   emailValidation,
   noHtmlValidation,
@@ -26,14 +25,6 @@ type FacultyRegisterFormValues = {
   password: string;
   confirmPassword: string;
 };
-
-function getRedirectPath(user: AuthResponse["user"]) {
-  if (user.role === "admin") {
-    return "/admin";
-  }
-
-  return user.status === "active" ? "/dashboard" : "/pending";
-}
 
 export function FacultyRegisterForm() {
   const router = useRouter();
@@ -65,7 +56,7 @@ export function FacultyRegisterForm() {
       body: JSON.stringify(values),
     });
 
-    const data = (await response.json()) as Partial<AuthResponse> & {
+    const data = (await response.json()) as {
       message?: string;
     };
 
@@ -74,9 +65,7 @@ export function FacultyRegisterForm() {
       return;
     }
 
-    if (data.user) {
-      router.push(getRedirectPath(data.user));
-    }
+    router.push("/login");
   };
 
   return (
