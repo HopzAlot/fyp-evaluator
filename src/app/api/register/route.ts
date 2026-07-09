@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clearAuthCookie } from "@/lib/auth/session";
 import { createFacultyUser } from "@/services/authService";
 import type { RegisterFacultyRequest } from "@/types/auth";
 import { validateFacultyRegisterPayload } from "@/utils/validation/authValidation";
@@ -20,6 +21,8 @@ export async function POST(request: Request) {
         { status: 409 },
       );
     }
+
+    await clearAuthCookie();
 
     return NextResponse.json(
       {

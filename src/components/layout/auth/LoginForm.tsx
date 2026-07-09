@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { FormTextField } from "@/components/fields/FormTextField";
 import { Button } from "@/components/ui/Button";
@@ -26,7 +26,9 @@ function getRedirectPath(user: AuthResponse["user"]) {
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [formError, setFormError] = useState("");
+  const registered = searchParams.get("registered") === "1";
   const {
     control,
     handleSubmit,
@@ -87,6 +89,11 @@ export function LoginForm() {
       />
       {formError ? (
         <p className="text-sm font-medium text-danger">{formError}</p>
+      ) : null}
+      {registered && !formError ? (
+        <p className="rounded-md border border-accent bg-accent-soft px-3 py-2 text-sm font-medium text-ink">
+          Registration successful. Please login after admin approval.
+        </p>
       ) : null}
       <Button
         type="submit"
