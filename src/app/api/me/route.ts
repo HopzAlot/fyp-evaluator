@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyAuthToken } from "@/lib/auth/jwt";
 import { getAuthCookie } from "@/lib/auth/session";
-import { getUserById } from "@/lib/auth/users";
+import { getUserById } from "@/services/authService";
 
 export async function GET() {
   const token = await getAuthCookie();

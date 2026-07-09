@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { ObjectId, type Collection, type OptionalId } from "mongodb";
-import { getDatabase } from "@/lib/auth/mongodb";
+import { getDatabase } from "@/lib/db/mongodb";
 import type {
   AuthUser,
   RegisterFacultyRequest,

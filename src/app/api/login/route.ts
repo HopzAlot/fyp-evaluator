@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { validateLoginPayload } from "@/lib/auth/authValidation";
 import { signAuthToken } from "@/lib/auth/jwt";
 import { setAuthCookie } from "@/lib/auth/session";
-import { authenticateUser } from "@/lib/auth/users";
+import { authenticateUser } from "@/services/authService";
 import type { LoginRequest } from "@/types/auth";
+import { validateLoginPayload } from "@/utils/validation/authValidation";
 
 export async function POST(request: Request) {
   try {

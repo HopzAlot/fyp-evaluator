@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { validateFacultyRegisterPayload } from "@/lib/auth/authValidation";
 import { signAuthToken } from "@/lib/auth/jwt";
 import { setAuthCookie } from "@/lib/auth/session";
-import { createFacultyUser } from "@/lib/auth/users";
+import { createFacultyUser } from "@/services/authService";
 import type { RegisterFacultyRequest } from "@/types/auth";
+import { validateFacultyRegisterPayload } from "@/utils/validation/authValidation";
 
 export async function POST(request: Request) {
   try {
