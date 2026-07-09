@@ -27,8 +27,15 @@ function redirectWithClearedCookie(request: NextRequest, path: string) {
   return response;
 }
 
+function continueWithClearedCookie() {
+  const response = NextResponse.next();
+  response.cookies.delete(authCookieName);
+  return response;
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const registered = request.nextUrl.searchParams.get("registered") === "1";
   const token = request.cookies.get(authCookieName)?.value;
   const payload = token ? verifyAuthToken(token) : null;
   const isAuthRoute = authRoutes.includes(pathname);
@@ -48,12 +55,20 @@ export function proxy(request: NextRequest) {
 
   const homePath = getHomePath(payload.role, payload.status);
 
+  if (pathname === "/login" && registered) {
+    return continueWithClearedCookie();
+  }
+
   if (isAuthRoute) {
     return NextResponse.redirect(new URL(homePath, request.url));
   }
 
   if (startsWithRoute(pathname, adminRoutes) && payload.role !== "admin") {
     return NextResponse.redirect(new URL("/unauthorized", request.url));
+  }
+
+  if (startsWithRoute(pathname, facultyRoutes) && payload.role === "admin") {
+    return NextResponse.redirect(new URL("/admin", request.url));
   }
 
   if (

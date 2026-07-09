@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { FormTextField } from "@/components/fields/FormTextField";
 import { Button } from "@/components/ui/Button";
-import type { AuthResponse } from "@/types/auth";
 import {
   emailValidation,
   passwordValidation,
@@ -15,14 +14,6 @@ type LoginFormValues = {
   email: string;
   password: string;
 };
-
-function getRedirectPath(user: AuthResponse["user"]) {
-  if (user.role === "admin") {
-    return "/admin";
-  }
-
-  return user.status === "active" ? "/dashboard" : "/pending";
-}
 
 export function LoginForm() {
   const router = useRouter();
@@ -50,7 +41,7 @@ export function LoginForm() {
       body: JSON.stringify(values),
     });
 
-    const data = (await response.json()) as Partial<AuthResponse> & {
+    const data = (await response.json()) as {
       message?: string;
     };
 
@@ -59,9 +50,7 @@ export function LoginForm() {
       return;
     }
 
-    if (data.user) {
-      router.push(getRedirectPath(data.user));
-    }
+    router.push("/dashboard");
   };
 
   return (
