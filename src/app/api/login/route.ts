@@ -23,9 +23,17 @@ export async function POST(request: Request) {
       );
     }
 
+    if (user.status !== "active") {
+      return NextResponse.json(
+        { message: "Kindly contact admin, your account is not active." },
+        { status: 403 },
+      );
+    }
+
     const token = signAuthToken({
       userId: user.id,
       role: user.role,
+      status: user.status,
     });
     await setAuthCookie(token);
 

@@ -5,7 +5,7 @@ import { verifyAuthToken } from "@/lib/auth/jwt";
 const authRoutes = ["/login", "/register"];
 const facultyRoutes = ["/dashboard", "/projects"];
 const adminRoutes = ["/admin"];
-const protectedRoutes = [...facultyRoutes, ...adminRoutes, "/pending"];
+const protectedRoutes = [...facultyRoutes, ...adminRoutes];
 
 function startsWithRoute(pathname: string, routes: string[]) {
   return routes.some(
