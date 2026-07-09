@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { signAuthToken } from "@/lib/auth/jwt";
-import { setAuthCookie } from "@/lib/auth/session";
+import { createAuthTokens } from "@/lib/auth/jwt";
+import { setAuthCookies } from "@/lib/auth/session";
 import { getFacultyByUserId } from "@/services/facultyService";
 import { authenticateUser, toAuthUser } from "@/services/userService";
 import type { LoginRequest } from "@/types/auth";
@@ -36,12 +36,12 @@ export async function POST(request: Request) {
         ? await getFacultyByUserId(userAccount._id)
         : null;
     const user = toAuthUser(userAccount, faculty);
-    const token = signAuthToken({
+    const tokens = createAuthTokens({
       userId: user.id,
       role: user.role,
       status: user.status,
     });
-    await setAuthCookie(token);
+    await setAuthCookies(tokens);
 
     return NextResponse.json({ user });
   } catch (error) {

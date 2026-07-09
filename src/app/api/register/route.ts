@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { clearAuthCookie } from "@/lib/auth/session";
+import { clearAuthCookies } from "@/lib/auth/session";
 import { createFacultyProfile } from "@/services/facultyService";
 import {
   createUserAccount,
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       throw error;
     }
 
-    await clearAuthCookie();
+    await clearAuthCookies();
 
     return NextResponse.json(
       {

@@ -1,6 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { authCookieName } from "@/lib/auth/session";
-import { verifyAuthToken } from "@/lib/auth/jwt";
+import {
+  accessTokenCookieName,
+  accessTokenCookieOptions,
+  refreshTokenCookieName,
+} from "@/lib/auth/session";
+import {
+  signAccessToken,
+  verifyAccessToken,
+  verifyRefreshToken,
+} from "@/lib/auth/jwt";
+import type { UserRole, UserStatus } from "@/types/auth";
 
 const authRoutes = ["/login", "/register"];
 const facultyRoutes = ["/dashboard", "/projects"];
@@ -23,26 +32,53 @@ function getHomePath(role: string) {
 
 function redirectWithClearedCookie(request: NextRequest, path: string) {
   const response = NextResponse.redirect(new URL(path, request.url));
-  response.cookies.delete(authCookieName);
+  clearTokenCookies(response);
   return response;
 }
 
 function continueWithClearedCookie() {
   const response = NextResponse.next();
-  response.cookies.delete(authCookieName);
+  clearTokenCookies(response);
   return response;
 }
+
+function clearTokenCookies(response: NextResponse) {
+  response.cookies.delete(accessTokenCookieName);
+  response.cookies.delete(refreshTokenCookieName);
+}
+
+function refreshAccessCookie(response: NextResponse, payload: AuthPayload) {
+  response.cookies.set(
+    accessTokenCookieName,
+    signAccessToken(payload),
+    accessTokenCookieOptions,
+  );
+}
+
+type AuthPayload = {
+  userId: string;
+  role: UserRole;
+  status: UserStatus;
+};
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const registered = request.nextUrl.searchParams.get("registered") === "1";
-  const token = request.cookies.get(authCookieName)?.value;
-  const payload = token ? verifyAuthToken(token) : null;
+  const accessToken = request.cookies.get(accessTokenCookieName)?.value;
+  const refreshToken = request.cookies.get(refreshTokenCookieName)?.value;
+  const accessPayload = accessToken ? verifyAccessToken(accessToken) : null;
+  const refreshPayload =
+    !accessPayload && refreshToken ? verifyRefreshToken(refreshToken) : null;
+  const payload = accessPayload ?? refreshPayload;
   const isAuthRoute = authRoutes.includes(pathname);
   const isProtectedRoute = startsWithRoute(pathname, protectedRoutes);
 
+  if (pathname === "/login" && registered) {
+    return continueWithClearedCookie();
+  }
+
   if (!payload) {
-    if (token) {
+    if (accessToken || refreshToken) {
       return redirectWithClearedCookie(request, "/login");
     }
 
@@ -55,23 +91,43 @@ export function proxy(request: NextRequest) {
 
   const homePath = getHomePath(payload.role);
 
-  if (pathname === "/login" && registered) {
-    return continueWithClearedCookie();
-  }
-
   if (isAuthRoute) {
-    return NextResponse.redirect(new URL(homePath, request.url));
+    const response = NextResponse.redirect(new URL(homePath, request.url));
+
+    if (!accessPayload && refreshPayload) {
+      refreshAccessCookie(response, refreshPayload);
+    }
+
+    return response;
   }
 
   if (startsWithRoute(pathname, adminRoutes) && payload.role !== "admin") {
-    return NextResponse.redirect(new URL("/unauthorized", request.url));
+    const response = NextResponse.redirect(new URL("/unauthorized", request.url));
+
+    if (!accessPayload && refreshPayload) {
+      refreshAccessCookie(response, refreshPayload);
+    }
+
+    return response;
   }
 
   if (startsWithRoute(pathname, facultyRoutes) && payload.role === "admin") {
-    return NextResponse.redirect(new URL("/admin", request.url));
+    const response = NextResponse.redirect(new URL("/admin", request.url));
+
+    if (!accessPayload && refreshPayload) {
+      refreshAccessCookie(response, refreshPayload);
+    }
+
+    return response;
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+
+  if (!accessPayload && refreshPayload) {
+    refreshAccessCookie(response, refreshPayload);
+  }
+
+  return response;
 }
 
 export const config = {

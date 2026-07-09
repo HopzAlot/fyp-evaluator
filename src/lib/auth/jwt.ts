@@ -7,6 +7,11 @@ export type AuthTokenPayload = {
   status: UserStatus;
 };
 
+export type AuthTokenPair = {
+  accessToken: string;
+  refreshToken: string;
+};
+
 function getJwtSecret() {
   const secret = process.env.JWT_SECRET;
 
@@ -17,14 +22,49 @@ function getJwtSecret() {
   return secret;
 }
 
-export function signAuthToken(payload: AuthTokenPayload) {
-  return jwt.sign(payload, getJwtSecret(), { expiresIn: "7d" });
+export function signAccessToken(payload: AuthTokenPayload) {
+  return jwt.sign({ ...payload, tokenType: "access" }, getJwtSecret(), {
+    expiresIn: "15m",
+  });
 }
 
-export function verifyAuthToken(token: string) {
+export function signRefreshToken(payload: AuthTokenPayload) {
+  return jwt.sign({ ...payload, tokenType: "refresh" }, getJwtSecret(), {
+    expiresIn: "7d",
+  });
+}
+
+export function createAuthTokens(payload: AuthTokenPayload): AuthTokenPair {
+  return {
+    accessToken: signAccessToken(payload),
+    refreshToken: signRefreshToken(payload),
+  };
+}
+
+function verifyToken(token: string, tokenType: "access" | "refresh") {
   try {
-    return jwt.verify(token, getJwtSecret()) as AuthTokenPayload;
+    const payload = jwt.verify(token, getJwtSecret()) as AuthTokenPayload & {
+      tokenType?: string;
+    };
+
+    if (payload.tokenType !== tokenType) {
+      return null;
+    }
+
+    return {
+      userId: payload.userId,
+      role: payload.role,
+      status: payload.status,
+    };
   } catch {
     return null;
   }
+}
+
+export function verifyAccessToken(token: string) {
+  return verifyToken(token, "access");
+}
+
+export function verifyRefreshToken(token: string) {
+  return verifyToken(token, "refresh");
 }
