@@ -54,7 +54,7 @@ export function MainAppBar() {
               {loading ? "Loading user" : displayName}
             </p>
             <p className="text-xs text-muted">
-              {user ? `${user.role} - ${user.status}` : "Checking session"}
+              {user?.email ?? "Checking session"}
             </p>
           </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-sm font-semibold text-white">
