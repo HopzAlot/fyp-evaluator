@@ -16,6 +16,14 @@ type LoginFormValues = {
   password: string;
 };
 
+function getRedirectPath(user: AuthResponse["user"]) {
+  if (user.role === "admin") {
+    return "/admin";
+  }
+
+  return user.status === "active" ? "/dashboard" : "/pending";
+}
+
 export function LoginForm() {
   const router = useRouter();
   const [formError, setFormError] = useState("");
@@ -49,7 +57,9 @@ export function LoginForm() {
       return;
     }
 
-    router.push("/dashboard");
+    if (data.user) {
+      router.push(getRedirectPath(data.user));
+    }
   };
 
   return (

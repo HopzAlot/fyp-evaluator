@@ -27,6 +27,14 @@ type FacultyRegisterFormValues = {
   confirmPassword: string;
 };
 
+function getRedirectPath(user: AuthResponse["user"]) {
+  if (user.role === "admin") {
+    return "/admin";
+  }
+
+  return user.status === "active" ? "/dashboard" : "/pending";
+}
+
 export function FacultyRegisterForm() {
   const router = useRouter();
   const [formError, setFormError] = useState("");
@@ -66,7 +74,9 @@ export function FacultyRegisterForm() {
       return;
     }
 
-    router.push("/dashboard");
+    if (data.user) {
+      router.push(getRedirectPath(data.user));
+    }
   };
 
   return (
