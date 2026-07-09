@@ -1,10 +1,9 @@
 import jwt from "jsonwebtoken";
-import type { UserRole, UserStatus } from "@/types/auth";
+import type { UserRole } from "@/types/auth";
 
 export type AuthTokenPayload = {
   userId: string;
   role: UserRole;
-  status: UserStatus;
 };
 
 function getJwtSecret() {

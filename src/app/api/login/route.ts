@@ -26,7 +26,6 @@ export async function POST(request: Request) {
     const token = signAuthToken({
       userId: user.id,
       role: user.role,
-      status: user.status,
     });
     await setAuthCookie(token);
 

@@ -13,12 +13,12 @@ function startsWithRoute(pathname: string, routes: string[]) {
   );
 }
 
-function getHomePath(role: string, status: string) {
+function getHomePath(role: string) {
   if (role === "admin") {
     return "/admin";
   }
 
-  return status === "active" ? "/dashboard" : "/pending";
+  return "/dashboard";
 }
 
 function redirectWithClearedCookie(request: NextRequest, path: string) {
@@ -53,7 +53,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const homePath = getHomePath(payload.role, payload.status);
+  const homePath = getHomePath(payload.role);
 
   if (pathname === "/login" && registered) {
     return continueWithClearedCookie();
@@ -69,18 +69,6 @@ export function proxy(request: NextRequest) {
 
   if (startsWithRoute(pathname, facultyRoutes) && payload.role === "admin") {
     return NextResponse.redirect(new URL("/admin", request.url));
-  }
-
-  if (
-    startsWithRoute(pathname, facultyRoutes) &&
-    payload.role === "faculty" &&
-    payload.status !== "active"
-  ) {
-    return NextResponse.redirect(new URL("/pending", request.url));
-  }
-
-  if (pathname === "/pending" && payload.status === "active") {
-    return NextResponse.redirect(new URL(homePath, request.url));
   }
 
   return NextResponse.next();

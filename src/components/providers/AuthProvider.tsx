@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { AuthResponse, AuthUser } from "@/types/auth";
 
 type AuthContextValue = {
@@ -21,6 +21,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -43,6 +44,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (active) {
           setUser(data.user);
+
+          if (
+            data.user.role === "faculty" &&
+            data.user.status !== "active" &&
+            pathname !== "/pending"
+          ) {
+            router.replace("/pending");
+          }
         }
       } finally {
         if (active) {
@@ -56,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false;
     };
-  }, [router]);
+  }, [pathname, router]);
 
   const value = useMemo(
     () => ({
