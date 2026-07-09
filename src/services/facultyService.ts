@@ -1,6 +1,10 @@
 import { ObjectId, type Collection, type OptionalId } from "mongodb";
 import { getDatabase } from "@/lib/db/mongodb";
 import type { RegisterFacultyRequest } from "@/types/auth";
+import {
+  normalizeGender,
+  normalizeText,
+} from "@/utils/normalization/facultyNormalization";
 
 export type FacultyDocument = {
   _id: ObjectId;
@@ -29,11 +33,11 @@ export async function createFacultyProfile(
   const now = new Date();
   const faculty: OptionalId<FacultyDocument> = {
     userId,
-    fullName: values.fullName.trim(),
-    contactNumber: values.contactNumber.trim(),
-    department: values.department.trim(),
-    designation: values.designation.trim(),
-    gender: values.gender,
+    fullName: normalizeText(values.fullName),
+    contactNumber: normalizeText(values.contactNumber),
+    department: normalizeText(values.department),
+    designation: normalizeText(values.designation),
+    gender: normalizeGender(values.gender),
     createdAt: now,
     updatedAt: now,
   };

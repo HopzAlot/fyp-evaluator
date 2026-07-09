@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/components/providers/AuthProvider";
+import { formatGender } from "@/utils/normalization/facultyNormalization";
 
 const emptyValue = "Not provided";
 
@@ -12,7 +13,7 @@ export default function ProfilePage() {
     { label: "Contact number", value: user?.contactNumber },
     { label: "Department", value: user?.department },
     { label: "Designation", value: user?.designation },
-    { label: "Gender", value: user?.gender },
+    { label: "Gender", value: formatGender(user?.gender) },
   ];
 
   return (
@@ -65,7 +66,7 @@ export default function ProfilePage() {
               <p className="text-xs font-semibold uppercase text-muted">
                 {field.label}
               </p>
-              <p className="mt-2 text-sm font-medium capitalize text-ink">
+              <p className="mt-2 text-sm font-medium text-ink">
                 {loading ? "Loading" : field.value ?? emptyValue}
               </p>
             </div>

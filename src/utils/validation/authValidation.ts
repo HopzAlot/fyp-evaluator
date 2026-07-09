@@ -1,4 +1,8 @@
 import type { LoginRequest, RegisterFacultyRequest } from "@/types/auth";
+import {
+  isGenderValue,
+  normalizeGender,
+} from "@/utils/normalization/facultyNormalization";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const htmlPattern = /<[^>]*>|&lt;|&gt;|javascript:/i;
@@ -58,6 +62,10 @@ export function validateFacultyRegisterPayload(payload: unknown) {
 
   if (!emailPattern.test(values.email ?? "")) {
     return "Enter a valid email address";
+  }
+
+  if (!isGenderValue(normalizeGender(values.gender ?? ""))) {
+    return "Select a valid gender";
   }
 
   if ((values.password?.length ?? 0) < 8) {
