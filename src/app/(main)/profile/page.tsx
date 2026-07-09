@@ -9,13 +9,10 @@ export default function ProfilePage() {
 
   const profileFields = [
     { label: "Full name", value: user?.fullName },
-    { label: "Email", value: user?.email },
     { label: "Contact number", value: user?.contactNumber },
     { label: "Department", value: user?.department },
     { label: "Designation", value: user?.designation },
     { label: "Gender", value: user?.gender },
-    { label: "Role", value: user?.role },
-    { label: "Status", value: user?.status },
   ];
 
   return (
@@ -25,7 +22,7 @@ export default function ProfilePage() {
           Profile
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-          Your account details and faculty information.
+          Your faculty profile information.
         </p>
       </section>
 
@@ -52,6 +49,14 @@ export default function ProfilePage() {
         </div>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-md border border-border bg-background p-4">
+            <p className="text-xs font-semibold uppercase text-muted">
+              Email
+            </p>
+            <p className="mt-2 text-sm font-medium text-ink">
+              {loading ? "Loading" : user?.email ?? emptyValue}
+            </p>
+          </div>
           {profileFields.map((field) => (
             <div
               key={field.label}

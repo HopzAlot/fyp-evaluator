@@ -5,30 +5,40 @@ import { usePathname } from "next/navigation";
 import { useMainLayout } from "@/components/layout/main/MainLayoutContext";
 import { useAuth } from "@/components/providers/AuthProvider";
 
-const pageCopy = {
-  dashboard: {
-    title: "Dashboard",
-    description: "Monitor FYP evaluation activity",
-  },
-  projects: {
-    title: "Projects",
-    description: "Review assigned projects and evaluations",
-  },
-  profile: {
-    title: "Profile",
-    description: "View your account and faculty information",
-  },
+const routeLabels: Record<string, string> = {
+  dashboard: "Dashboard",
+  projects: "Projects",
+  profile: "Profile",
+  admin: "Admin",
 };
+
+function formatSegment(segment: string) {
+  return (
+    routeLabels[segment] ??
+    decodeURIComponent(segment)
+      .replace(/-/g, " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase())
+  );
+}
+
+function getBreadcrumbs(pathname: string) {
+  const segments = pathname.split("/").filter(Boolean);
+
+  return segments.map((segment, index) => ({
+    label:
+      segments[index - 1] === "projects" && index > 0
+        ? "Evaluation"
+        : formatSegment(segment),
+    href: `/${segments.slice(0, index + 1).join("/")}`,
+    current: index === segments.length - 1,
+  }));
+}
 
 export function MainAppBar() {
   const pathname = usePathname();
   const { toggleSidebar } = useMainLayout();
   const { loading, logout, user } = useAuth();
-  const copy = pathname.startsWith("/projects")
-    ? pageCopy.projects
-    : pathname.startsWith("/profile")
-      ? pageCopy.profile
-      : pageCopy.dashboard;
+  const breadcrumbs = getBreadcrumbs(pathname);
   const displayName = user?.fullName ?? user?.email ?? "Loading";
   const initials = displayName
     .split(" ")
@@ -50,8 +60,26 @@ export function MainAppBar() {
             <span className="h-0.5 w-5 rounded bg-current shadow-[0_6px_0_current,0_-6px_0_current]" />
           </button>
           <div>
-            <p className="text-sm font-semibold text-ink">{copy.title}</p>
-            <p className="text-sm text-muted">{copy.description}</p>
+            <nav
+              aria-label="Breadcrumb"
+              className="flex flex-wrap items-center gap-1 text-sm text-muted"
+            >
+              {breadcrumbs.map((item, index) => (
+                <span key={item.href} className="flex items-center gap-1">
+                  {index > 0 ? <span>/</span> : null}
+                  {item.current ? (
+                    <span className="font-medium text-ink">{item.label}</span>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      className="transition hover:text-ink"
+                    >
+                      {item.label}
+                    </Link>
+                  )}
+                </span>
+              ))}
+            </nav>
           </div>
         </div>
 
@@ -59,6 +87,7 @@ export function MainAppBar() {
           <Link
             href="/profile"
             className="flex items-center gap-3 rounded-md px-2 py-1 transition hover:bg-surface-muted"
+            title="Click to show information"
           >
             <div className="text-right">
               <p className="text-sm font-semibold text-ink">
@@ -86,6 +115,7 @@ export function MainAppBar() {
             href="/profile"
             className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-sm font-semibold text-white"
             aria-label="Open profile"
+            title="Click to show information"
           >
             {loading ? "--" : initials}
           </Link>
