@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { clearAuthCookie } from "@/lib/auth/session";
-import { createFacultyUser } from "@/services/authService";
+import { createFacultyProfile } from "@/services/facultyService";
+import {
+  createUserAccount,
+  deleteUserAccount,
+  toAuthUser,
+} from "@/services/userService";
 import type { RegisterFacultyRequest } from "@/types/auth";
 import { validateFacultyRegisterPayload } from "@/utils/validation/authValidation";
 
@@ -13,13 +18,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: error }, { status: 400 });
     }
 
-    const user = await createFacultyUser(payload);
+    const userAccount = await createUserAccount({
+      email: payload.email,
+      password: payload.password,
+      role: "faculty",
+      status: "inactive",
+    });
 
-    if (!user) {
+    if (!userAccount) {
       return NextResponse.json(
         { message: "An account with this email already exists" },
         { status: 409 },
       );
+    }
+
+    let user;
+
+    try {
+      const faculty = await createFacultyProfile(userAccount._id, payload);
+      user = toAuthUser(userAccount, faculty);
+    } catch (error) {
+      await deleteUserAccount(userAccount._id);
+      throw error;
     }
 
     await clearAuthCookie();

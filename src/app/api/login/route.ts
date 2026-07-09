@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { signAuthToken } from "@/lib/auth/jwt";
 import { setAuthCookie } from "@/lib/auth/session";
-import { authenticateUser } from "@/services/authService";
+import { getFacultyByUserId } from "@/services/facultyService";
+import { authenticateUser, toAuthUser } from "@/services/userService";
 import type { LoginRequest } from "@/types/auth";
 import { validateLoginPayload } from "@/utils/validation/authValidation";
 
@@ -14,22 +15,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: error }, { status: 400 });
     }
 
-    const user = await authenticateUser(payload.email, payload.password);
+    const userAccount = await authenticateUser(payload.email, payload.password);
 
-    if (!user) {
+    if (!userAccount) {
       return NextResponse.json(
         { message: "Invalid email or password" },
         { status: 401 },
       );
     }
 
-    if (user.status !== "active") {
+    if (userAccount.status !== "active") {
       return NextResponse.json(
         { message: "Kindly contact admin, your account is not active." },
         { status: 403 },
       );
     }
 
+    const faculty =
+      userAccount.role === "faculty"
+        ? await getFacultyByUserId(userAccount._id)
+        : null;
+    const user = toAuthUser(userAccount, faculty);
     const token = signAuthToken({
       userId: user.id,
       role: user.role,
