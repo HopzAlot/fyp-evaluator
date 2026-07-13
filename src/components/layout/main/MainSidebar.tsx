@@ -4,15 +4,26 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Brand } from "@/components/ui/Brand";
 import { useMainLayout } from "@/components/layout/main/MainLayoutContext";
+import { useAuth } from "@/components/providers/AuthProvider";
 
-const navItems = [
+const facultyNavItems = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Projects", href: "/projects" },
+  { label: "Faculty", href: "/faculty" },
+];
+
+const adminNavItems = [
+  { label: "Dashboard", href: "/admin" },
+  { label: "Faculty", href: "/admin/faculty" },
 ];
 
 export function MainSidebar() {
   const pathname = usePathname();
   const { closeSidebar, sidebarOpen } = useMainLayout();
+  const { user } = useAuth();
+  const isAdmin = pathname.startsWith("/admin") || user?.role === "admin";
+  const navItems = isAdmin ? adminNavItems : facultyNavItems;
+  const workspaceLabel = isAdmin ? "Admin workspace" : "Faculty workspace";
 
   return (
     <>
@@ -33,7 +44,8 @@ export function MainSidebar() {
           {navItems.map((item) => {
             const active =
               pathname === item.href ||
-              (item.href !== "/dashboard" && pathname.startsWith(item.href));
+              (!["/admin", "/dashboard"].includes(item.href) &&
+                pathname.startsWith(item.href));
 
             return (
               <Link
@@ -54,7 +66,7 @@ export function MainSidebar() {
 
         <div className="mt-auto rounded-md border border-border bg-background p-3">
           <p className="text-sm font-semibold text-ink">Current role</p>
-          <p className="mt-1 text-sm text-muted">Faculty workspace</p>
+          <p className="mt-1 text-sm text-muted">{workspaceLabel}</p>
         </div>
       </aside>
     </>

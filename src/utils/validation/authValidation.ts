@@ -1,4 +1,8 @@
-import type { LoginRequest, RegisterFacultyRequest } from "@/types/auth";
+import type {
+  FacultyProfileRequest,
+  LoginRequest,
+  RegisterFacultyRequest,
+} from "@/types/auth";
 import {
   isGenderValue,
   normalizeGender,
@@ -74,6 +78,41 @@ export function validateFacultyRegisterPayload(payload: unknown) {
 
   if (values.password !== values.confirmPassword) {
     return "Passwords do not match";
+  }
+
+  return null;
+}
+
+export function validateFacultyProfilePayload(payload: unknown) {
+  const values = payload as Partial<FacultyProfileRequest>;
+  const requiredFields: Array<keyof FacultyProfileRequest> = [
+    "fullName",
+    "contactNumber",
+    "department",
+    "designation",
+    "gender",
+  ];
+
+  for (const field of requiredFields) {
+    if (!isString(values[field]) || !values[field]?.trim()) {
+      return `${field} is required`;
+    }
+  }
+
+  const textFields = [
+    values.fullName,
+    values.contactNumber,
+    values.department,
+    values.designation,
+    values.gender,
+  ];
+
+  if (textFields.some((value) => hasHtml(value ?? ""))) {
+    return "HTML is not allowed";
+  }
+
+  if (!isGenderValue(normalizeGender(values.gender ?? ""))) {
+    return "Select a valid gender";
   }
 
   return null;

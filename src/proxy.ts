@@ -12,13 +12,21 @@ import {
 import type { UserRole, UserStatus } from "@/types/auth";
 
 const authRoutes = ["/login", "/register"];
-const facultyRoutes = ["/dashboard", "/projects"];
+const facultyRoutes = ["/dashboard", "/projects", "/faculty"];
 const adminRoutes = ["/admin"];
 const sharedProtectedRoutes = ["/profile"];
+const adminApiRoutes = ["/api/admin"];
+const facultyApiRoutes = ["/api/faculty"];
+const sharedProtectedApiRoutes = ["/api/me"];
 const protectedRoutes = [
   ...facultyRoutes,
   ...adminRoutes,
   ...sharedProtectedRoutes,
+];
+const protectedApiRoutes = [
+  ...adminApiRoutes,
+  ...facultyApiRoutes,
+  ...sharedProtectedApiRoutes,
 ];
 
 function startsWithRoute(pathname: string, routes: string[]) {
@@ -52,12 +60,34 @@ function clearTokenCookies(response: NextResponse) {
   response.cookies.delete(refreshTokenCookieName);
 }
 
+function unauthorizedApiResponse() {
+  return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+}
+
+function forbiddenApiResponse() {
+  return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+}
+
 function refreshAccessCookie(response: NextResponse, payload: AuthPayload) {
   response.cookies.set(
     accessTokenCookieName,
     signAccessToken(payload),
     accessTokenCookieOptions,
   );
+}
+
+function continueWithAuthHeaders(request: NextRequest, payload: AuthPayload) {
+  const requestHeaders = new Headers(request.headers);
+
+  requestHeaders.set("x-auth-user-id", payload.userId);
+  requestHeaders.set("x-auth-role", payload.role);
+  requestHeaders.set("x-auth-status", payload.status);
+
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 }
 
 type AuthPayload = {
@@ -77,12 +107,34 @@ export function proxy(request: NextRequest) {
   const payload = accessPayload ?? refreshPayload;
   const isAuthRoute = authRoutes.includes(pathname);
   const isProtectedRoute = startsWithRoute(pathname, protectedRoutes);
+  const isProtectedApiRoute = startsWithRoute(pathname, protectedApiRoutes);
+  const isApiRoute = pathname.startsWith("/api");
 
   if (pathname === "/login" && registered) {
     return continueWithClearedCookie();
   }
 
   if (!payload) {
+    if (isProtectedApiRoute) {
+      const response = unauthorizedApiResponse();
+
+      if (accessToken || refreshToken) {
+        clearTokenCookies(response);
+      }
+
+      return response;
+    }
+
+    if (isApiRoute) {
+      const response = NextResponse.next();
+
+      if (accessToken || refreshToken) {
+        clearTokenCookies(response);
+      }
+
+      return response;
+    }
+
     if (accessToken || refreshToken) {
       return redirectWithClearedCookie(request, "/login");
     }
@@ -95,6 +147,39 @@ export function proxy(request: NextRequest) {
   }
 
   const homePath = getHomePath(payload.role);
+
+  if (startsWithRoute(pathname, adminApiRoutes) && payload.role !== "admin") {
+    const response = forbiddenApiResponse();
+
+    if (!accessPayload && refreshPayload) {
+      refreshAccessCookie(response, refreshPayload);
+    }
+
+    return response;
+  }
+
+  if (
+    startsWithRoute(pathname, facultyApiRoutes) &&
+    payload.role !== "faculty"
+  ) {
+    const response = forbiddenApiResponse();
+
+    if (!accessPayload && refreshPayload) {
+      refreshAccessCookie(response, refreshPayload);
+    }
+
+    return response;
+  }
+
+  if (isProtectedApiRoute) {
+    const response = continueWithAuthHeaders(request, payload);
+
+    if (!accessPayload && refreshPayload) {
+      refreshAccessCookie(response, refreshPayload);
+    }
+
+    return response;
+  }
 
   if (isAuthRoute) {
     const response = NextResponse.redirect(new URL(homePath, request.url));
@@ -136,5 +221,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

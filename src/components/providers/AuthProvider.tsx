@@ -15,6 +15,7 @@ type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   logout: () => Promise<void>;
+  updateUser: (user: AuthUser) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -67,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         router.replace("/login");
       },
+      updateUser: setUser,
     }),
     [loading, router, user],
   );

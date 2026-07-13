@@ -56,6 +56,24 @@ export async function getUserById(userId: string) {
   return UserModel.findById(userId);
 }
 
+export async function getFacultyUsers() {
+  await connectDatabase();
+  return UserModel.find({ role: "faculty" }).sort({ createdAt: -1 });
+}
+
+export async function updateUserStatus(userId: string, status: UserStatus) {
+  if (!isValidObjectId(userId)) {
+    return null;
+  }
+
+  await connectDatabase();
+  return UserModel.findOneAndUpdate(
+    { _id: userId, role: "faculty" },
+    { status },
+    { new: true },
+  );
+}
+
 export function toAuthUser(
   user: UserDocument,
   faculty?: FacultyDocument | null,

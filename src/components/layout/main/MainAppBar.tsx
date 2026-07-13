@@ -7,6 +7,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 
 const routeLabels: Record<string, string> = {
   dashboard: "Dashboard",
+  faculty: "Faculty",
   projects: "Projects",
   profile: "Profile",
   admin: "Admin",
@@ -28,6 +29,8 @@ function getBreadcrumbs(pathname: string) {
     label:
       segments[index - 1] === "projects" && index > 0
         ? "Evaluation"
+        : segments[index - 1] === "admin" && segment === "faculty"
+          ? "Faculty"
         : formatSegment(segment),
     href: `/${segments.slice(0, index + 1).join("/")}`,
     current: index === segments.length - 1,

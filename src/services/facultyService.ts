@@ -1,7 +1,7 @@
 import type { Types } from "mongoose";
 import { connectDatabase } from "@/lib/db/mongoose";
 import { FacultyModel } from "@/models/Faculty";
-import type { RegisterFacultyRequest } from "@/types/auth";
+import type { FacultyProfileRequest, RegisterFacultyRequest } from "@/types/auth";
 import {
   normalizeGender,
   normalizeText,
@@ -28,4 +28,28 @@ export async function createFacultyProfile(
 export async function getFacultyByUserId(userId: Types.ObjectId) {
   await connectDatabase();
   return FacultyModel.findOne({ userId });
+}
+
+export async function getFacultyProfilesByUserIds(userIds: Types.ObjectId[]) {
+  await connectDatabase();
+  return FacultyModel.find({ userId: { $in: userIds } });
+}
+
+export async function updateFacultyProfile(
+  userId: Types.ObjectId,
+  values: FacultyProfileRequest,
+) {
+  await connectDatabase();
+
+  return FacultyModel.findOneAndUpdate(
+    { userId },
+    {
+      fullName: normalizeText(values.fullName),
+      contactNumber: normalizeText(values.contactNumber),
+      department: normalizeText(values.department),
+      designation: normalizeText(values.designation),
+      gender: normalizeGender(values.gender),
+    },
+    { new: true },
+  );
 }

@@ -29,6 +29,14 @@ export type RegisterFacultyRequest = {
   confirmPassword: string;
 };
 
+export type FacultyProfileRequest = {
+  fullName: string;
+  contactNumber: string;
+  department: string;
+  designation: string;
+  gender: string;
+};
+
 export type AuthResponse = {
   user: AuthUser;
 };
