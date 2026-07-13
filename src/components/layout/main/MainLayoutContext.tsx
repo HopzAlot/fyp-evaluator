@@ -9,23 +9,29 @@ import {
 } from "react";
 
 type MainLayoutContextValue = {
+  sidebarCollapsed: boolean;
   sidebarOpen: boolean;
   closeSidebar: () => void;
+  toggleSidebarCollapsed: () => void;
   toggleSidebar: () => void;
 };
 
 const MainLayoutContext = createContext<MainLayoutContextValue | null>(null);
 
 export function MainLayoutProvider({ children }: { children: ReactNode }) {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const value = useMemo(
     () => ({
+      sidebarCollapsed,
       sidebarOpen,
       closeSidebar: () => setSidebarOpen(false),
+      toggleSidebarCollapsed: () =>
+        setSidebarCollapsed((current) => !current),
       toggleSidebar: () => setSidebarOpen((current) => !current),
     }),
-    [sidebarOpen],
+    [sidebarCollapsed, sidebarOpen],
   );
 
   return (

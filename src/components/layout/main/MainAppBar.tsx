@@ -37,9 +37,20 @@ function getBreadcrumbs(pathname: string) {
   }));
 }
 
+function DashboardIcon() {
+  return (
+    <span className="grid h-5 w-5 grid-cols-2 gap-0.5" aria-hidden="true">
+      <span className="rounded-[2px] bg-current" />
+      <span className="rounded-[2px] bg-current" />
+      <span className="rounded-[2px] bg-current" />
+      <span className="rounded-[2px] bg-current" />
+    </span>
+  );
+}
+
 export function MainAppBar() {
   const pathname = usePathname();
-  const { toggleSidebar } = useMainLayout();
+  const { toggleSidebar, toggleSidebarCollapsed } = useMainLayout();
   const { loading, logout, user } = useAuth();
   const breadcrumbs = getBreadcrumbs(pathname);
   const displayName = user?.fullName ?? user?.email ?? "Loading";
@@ -60,7 +71,16 @@ export function MainAppBar() {
             className="flex h-10 w-10 items-center justify-center rounded-md border border-border text-ink transition hover:bg-surface-muted lg:hidden"
             aria-label="Toggle sidebar"
           >
-            <span className="h-0.5 w-5 rounded bg-current shadow-[0_6px_0_current,0_-6px_0_current]" />
+            <DashboardIcon />
+          </button>
+          <button
+            type="button"
+            onClick={toggleSidebarCollapsed}
+            className="hidden h-10 w-10 items-center justify-center rounded-md border border-border text-ink transition hover:bg-surface-muted lg:flex"
+            aria-label="Collapse sidebar"
+            title="Toggle sidebar"
+          >
+            <DashboardIcon />
           </button>
           <div>
             <nav

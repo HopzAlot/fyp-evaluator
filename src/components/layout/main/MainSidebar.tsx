@@ -19,7 +19,7 @@ const adminNavItems = [
 
 export function MainSidebar() {
   const pathname = usePathname();
-  const { closeSidebar, sidebarOpen } = useMainLayout();
+  const { closeSidebar, sidebarCollapsed, sidebarOpen } = useMainLayout();
   const { user } = useAuth();
   const isAdmin = pathname.startsWith("/admin") || user?.role === "admin";
   const navItems = isAdmin ? adminNavItems : facultyNavItems;
@@ -34,11 +34,16 @@ export function MainSidebar() {
         onClick={closeSidebar}
       />
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-border bg-surface px-4 py-5 transition-transform lg:static lg:z-auto lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-border bg-surface px-4 py-5 transition-all lg:static lg:z-auto lg:translate-x-0 ${
+          sidebarCollapsed ? "lg:w-[4.75rem] lg:px-3" : "lg:w-72"
+        } ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <Brand className="px-2" />
+        <Brand
+          compact={sidebarCollapsed}
+          className={sidebarCollapsed ? "px-2 lg:px-0" : "px-2"}
+        />
 
         <nav className="mt-8 space-y-1">
           {navItems.map((item) => {
@@ -57,14 +62,28 @@ export function MainSidebar() {
                     ? "bg-accent-soft text-ink"
                     : "text-muted hover:bg-surface-muted hover:text-ink"
                 }`}
+                title={sidebarCollapsed ? item.label : undefined}
               >
-                {item.label}
+                <span className={sidebarCollapsed ? "lg:hidden" : ""}>
+                  {item.label}
+                </span>
+                <span
+                  className={`hidden text-center text-sm font-semibold ${
+                    sidebarCollapsed ? "lg:block" : ""
+                  }`}
+                >
+                  {item.label[0]}
+                </span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="mt-auto rounded-md border border-border bg-background p-3">
+        <div
+          className={`mt-auto rounded-md border border-border bg-background p-3 ${
+            sidebarCollapsed ? "lg:hidden" : ""
+          }`}
+        >
           <p className="text-sm font-semibold text-ink">Current role</p>
           <p className="mt-1 text-sm text-muted">{workspaceLabel}</p>
         </div>
