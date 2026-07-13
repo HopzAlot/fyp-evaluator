@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { FormSelectField } from "@/components/fields/FormSelectField";
+import { FormTextField } from "@/components/fields/FormTextField";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
 import type {
@@ -10,6 +13,7 @@ import type {
   ProjectUpdateRequest,
 } from "@/types/project";
 import { parseProjectCsv } from "@/utils/csv/projectCsv";
+import { noHtmlValidation } from "@/utils/validation/formValidation";
 
 const statusLabels: Record<AdminProjectStatus, string> = {
   pending: "Pending",
@@ -25,14 +29,26 @@ const statusStyles: Record<AdminProjectStatus, string> = {
   rejected: "bg-danger/10 text-danger",
 };
 
+const statusOptions = Object.entries(statusLabels).map(([value, label]) => ({
+  label,
+  value,
+}));
+
+const emptyProjectValues: ProjectUpdateRequest = {
+  title: "",
+  students: ["", "", "", ""],
+  supervisor: "",
+  coSupervisor: "",
+  industrialPartner: "",
+  sdg: "",
+  status: "pending",
+};
+
 export function AdminProjectsManager() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [projects, setProjects] = useState<AdminProject[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingProject, setEditingProject] = useState<AdminProject | null>(
-    null,
-  );
-  const [editValues, setEditValues] = useState<ProjectUpdateRequest | null>(
     null,
   );
   const [previewFile, setPreviewFile] = useState<File | null>(null);
@@ -48,6 +64,15 @@ export function AdminProjectsManager() {
   const [message, setMessage] = useState("");
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const allSelected = projects.length > 0 && selectedIds.length === projects.length;
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting },
+  } = useForm<ProjectUpdateRequest>({
+    defaultValues: emptyProjectValues,
+    mode: "onChange",
+  });
   const counts = useMemo(
     () => ({
       total: projects.length,
@@ -263,7 +288,7 @@ export function AdminProjectsManager() {
     setError("");
     setMessage("");
     setEditingProject(project);
-    setEditValues({
+    reset({
       title: project.title,
       students: [...project.students, "", "", "", ""].slice(0, 4),
       supervisor: project.supervisor,
@@ -274,30 +299,13 @@ export function AdminProjectsManager() {
     });
   };
 
-  const updateEditValue = (
-    field: keyof Omit<ProjectUpdateRequest, "students">,
-    value: string,
-  ) => {
-    setEditValues((currentValues) =>
-      currentValues ? { ...currentValues, [field]: value } : currentValues,
-    );
+  const cancelEdit = () => {
+    setEditingProject(null);
+    reset(emptyProjectValues);
   };
 
-  const updateEditStudent = (index: number, value: string) => {
-    setEditValues((currentValues) => {
-      if (!currentValues) {
-        return currentValues;
-      }
-
-      const students = [...currentValues.students];
-      students[index] = value;
-
-      return { ...currentValues, students };
-    });
-  };
-
-  const saveProject = async () => {
-    if (!editingProject || !editValues) {
+  const saveProject = async (values: ProjectUpdateRequest) => {
+    if (!editingProject) {
       return;
     }
 
@@ -305,10 +313,15 @@ export function AdminProjectsManager() {
     setMessage("");
     setSaving(true);
 
+    const payload = {
+      ...values,
+      students: values.students.map((student) => student.trim()),
+    };
+
     const response = await fetch(`/api/admin/projects/${editingProject.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editValues),
+      body: JSON.stringify(payload),
     });
     const data = (await response.json()) as {
       project?: AdminProject;
@@ -328,7 +341,7 @@ export function AdminProjectsManager() {
       ),
     );
     setEditingProject(null);
-    setEditValues(null);
+    reset(emptyProjectValues);
     setMessage("Project updated successfully.");
   };
 
@@ -379,7 +392,7 @@ export function AdminProjectsManager() {
 
     if (editingProject?.id === data.project.id) {
       setEditingProject(data.project);
-      setEditValues({
+      reset({
         title: data.project.title,
         students: [...data.project.students, "", "", "", ""].slice(0, 4),
         supervisor: data.project.supervisor,
@@ -391,6 +404,118 @@ export function AdminProjectsManager() {
     }
 
     setMessage("Project status updated successfully.");
+  };
+
+  const renderProjectEditForm = (project: AdminProject) => {
+    if (editingProject?.id !== project.id) {
+      return null;
+    }
+
+    return (
+      <div className="border-t border-border bg-background px-5 py-4">
+        <form
+          className="rounded-lg border border-border bg-surface p-4"
+          noValidate
+          onSubmit={handleSubmit(saveProject)}
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-ink">Edit project</h3>
+              <p className="mt-1 text-sm text-muted">
+                Update project details and status.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={cancelEdit}
+              className="h-10 rounded-md border border-border px-3 text-sm font-semibold text-ink transition hover:bg-surface-muted"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <FormTextField
+              control={control}
+              name="title"
+              label="Title"
+              placeholder="Enter project title"
+              rules={{
+                required: "Project title is required",
+                validate: noHtmlValidation,
+              }}
+            />
+            {Array.from({ length: 4 }).map((_, index) => (
+              <FormTextField
+                key={index}
+                control={control}
+                name={`students.${index}` as const}
+                label={`Student ${index + 1}`}
+                placeholder={`Enter student ${index + 1}`}
+                rules={{
+                  required:
+                    index === 0 ? "At least one student is required" : false,
+                  validate: noHtmlValidation,
+                }}
+              />
+            ))}
+            <FormTextField
+              control={control}
+              name="supervisor"
+              label="Supervisor"
+              placeholder="Enter supervisor"
+              rules={{
+                required: "Supervisor is required",
+                validate: noHtmlValidation,
+              }}
+            />
+            <FormTextField
+              control={control}
+              name="coSupervisor"
+              label="Co Supervisor"
+              placeholder="Enter co supervisor"
+              rules={{ validate: noHtmlValidation }}
+            />
+            <FormTextField
+              control={control}
+              name="industrialPartner"
+              label="Industrial Partner"
+              placeholder="Enter industrial partner"
+              rules={{
+                required: "Industrial partner is required",
+                validate: noHtmlValidation,
+              }}
+            />
+            <FormTextField
+              control={control}
+              name="sdg"
+              label="SDG"
+              placeholder="Enter SDG"
+              rules={{
+                required: "SDG is required",
+                validate: noHtmlValidation,
+              }}
+            />
+            <FormSelectField
+              control={control}
+              name="status"
+              label="Status"
+              options={statusOptions}
+              rules={{ required: "Status is required" }}
+            />
+          </div>
+
+          <Button
+            type="submit"
+            className="mt-4"
+            loading={saving || isSubmitting}
+            loadingText="Saving"
+          >
+            Save changes
+          </Button>
+        </form>
+      </div>
+    );
   };
 
   const columns: DataTableColumn<AdminProject>[] = [
@@ -701,134 +826,6 @@ export function AdminProjectsManager() {
           </div>
         ) : null}
 
-        {editingProject && editValues ? (
-          <div className="border-b border-border bg-background px-5 py-4">
-            <div className="rounded-lg border border-border bg-surface p-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold text-ink">
-                    Edit project
-                  </h3>
-                  <p className="mt-1 text-sm text-muted">
-                    Update project details and status.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingProject(null);
-                    setEditValues(null);
-                  }}
-                  className="h-10 rounded-md border border-border px-3 text-sm font-semibold text-ink transition hover:bg-surface-muted"
-                >
-                  Cancel
-                </button>
-              </div>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <label className="space-y-2">
-                  <span className="block text-sm font-medium text-ink">
-                    Title
-                  </span>
-                  <input
-                    value={editValues.title}
-                    onChange={(event) =>
-                      updateEditValue("title", event.target.value)
-                    }
-                    className="h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-                  />
-                </label>
-                {Array.from({ length: 4 }).map((_, index) => (
-                  <label key={index} className="space-y-2">
-                    <span className="block text-sm font-medium text-ink">
-                      Student {index + 1}
-                    </span>
-                    <input
-                      value={editValues.students[index] ?? ""}
-                      onChange={(event) =>
-                        updateEditStudent(index, event.target.value)
-                      }
-                      className="h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-                    />
-                  </label>
-                ))}
-                <label className="space-y-2">
-                  <span className="block text-sm font-medium text-ink">
-                    Supervisor
-                  </span>
-                  <input
-                    value={editValues.supervisor}
-                    onChange={(event) =>
-                      updateEditValue("supervisor", event.target.value)
-                    }
-                    className="h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-                  />
-                </label>
-                <label className="space-y-2">
-                  <span className="block text-sm font-medium text-ink">
-                    Co Supervisor
-                  </span>
-                  <input
-                    value={editValues.coSupervisor}
-                    onChange={(event) =>
-                      updateEditValue("coSupervisor", event.target.value)
-                    }
-                    className="h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-                  />
-                </label>
-                <label className="space-y-2">
-                  <span className="block text-sm font-medium text-ink">
-                    Industrial Partner
-                  </span>
-                  <input
-                    value={editValues.industrialPartner}
-                    onChange={(event) =>
-                      updateEditValue("industrialPartner", event.target.value)
-                    }
-                    className="h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-                  />
-                </label>
-                <label className="space-y-2">
-                  <span className="block text-sm font-medium text-ink">SDG</span>
-                  <input
-                    value={editValues.sdg}
-                    onChange={(event) =>
-                      updateEditValue("sdg", event.target.value)
-                    }
-                    className="h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-                  />
-                </label>
-                <label className="space-y-2">
-                  <span className="block text-sm font-medium text-ink">
-                    Status
-                  </span>
-                  <select
-                    value={editValues.status}
-                    onChange={(event) =>
-                      updateEditValue("status", event.target.value)
-                    }
-                    className="h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-                  >
-                    {Object.entries(statusLabels).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <Button
-                type="button"
-                className="mt-4"
-                loading={saving}
-                loadingText="Saving"
-                onClick={saveProject}
-              >
-                Save changes
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
         <DataTable
           columns={columns}
           data={projects}
@@ -837,6 +834,7 @@ export function AdminProjectsManager() {
           loading={loading}
           loadingMessage="Loading projects"
           minWidth="1120px"
+          renderExpandedRow={renderProjectEditForm}
         />
       </section>
     </>
