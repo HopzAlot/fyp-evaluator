@@ -23,6 +23,8 @@ export function AdminProjectsManager() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [projects, setProjects] = useState<AdminProject[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [dropzoneOpen, setDropzoneOpen] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -96,6 +98,12 @@ export function AdminProjectsManager() {
   const uploadCsv = async (file: File) => {
     setError("");
     setMessage("");
+
+    if (!file.name.toLowerCase().endsWith(".csv") && file.type !== "text/csv") {
+      setError("Only CSV files are allowed");
+      return;
+    }
+
     setUploading(true);
 
     const formData = new FormData();
@@ -119,6 +127,7 @@ export function AdminProjectsManager() {
 
     setProjects((currentProjects) => [...data.projects!, ...currentProjects]);
     setMessage(`${data.projects.length} project(s) uploaded successfully.`);
+    setDropzoneOpen(false);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -184,6 +193,17 @@ export function AdminProjectsManager() {
     );
     setSelectedIds([]);
     setMessage(`${data.deletedCount ?? 0} project(s) deleted successfully.`);
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setDragActive(false);
+
+    const file = event.dataTransfer.files[0];
+
+    if (file) {
+      uploadCsv(file);
+    }
   };
 
   const columns: DataTableColumn<AdminProject>[] = [
@@ -307,10 +327,6 @@ export function AdminProjectsManager() {
             <h2 className="text-base font-semibold text-ink">
               Imported projects
             </h2>
-            <p className="mt-1 text-sm text-muted">
-              CSV columns: title, student 1, student 2, student 3, student 4,
-              supervisor, co supervisor, industrial partner, sdg.
-            </p>
             {error ? (
               <p className="mt-2 text-sm font-medium text-danger">{error}</p>
             ) : null}
@@ -320,24 +336,11 @@ export function AdminProjectsManager() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,text/csv"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-
-                if (file) {
-                  uploadCsv(file);
-                }
-              }}
-            />
             <Button
               type="button"
               loading={uploading}
               loadingText="Uploading"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => setDropzoneOpen((current) => !current)}
             >
               Upload CSV
             </Button>
@@ -358,6 +361,63 @@ export function AdminProjectsManager() {
             </button>
           </div>
         </div>
+
+        {dropzoneOpen ? (
+          <div className="border-b border-border bg-background px-5 py-4">
+            <p className="mb-3 rounded-md border border-danger bg-danger/10 px-3 py-2 text-sm font-medium text-danger">
+              CSV format must be exactly: title, student 1, student 2, student
+              3, student 4, supervisor, co supervisor, industrial partner, sdg.
+              Leave empty student columns blank when a project has fewer than 4
+              students.
+            </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+
+                if (file) {
+                  uploadCsv(file);
+                }
+              }}
+            />
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => fileInputRef.current?.click()}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  fileInputRef.current?.click();
+                }
+              }}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setDragActive(true);
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setDragActive(true);
+              }}
+              onDragLeave={() => setDragActive(false)}
+              onDrop={handleDrop}
+              className={`flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed px-4 py-8 text-center transition ${
+                dragActive
+                  ? "border-primary bg-primary/10"
+                  : "border-border bg-surface hover:bg-surface-muted"
+              }`}
+            >
+              <p className="text-sm font-semibold text-ink">
+                Drop CSV file here
+              </p>
+              <p className="mt-1 text-sm text-muted">
+                or click to select a file from your device
+              </p>
+            </div>
+          </div>
+        ) : null}
 
         <DataTable
           columns={columns}

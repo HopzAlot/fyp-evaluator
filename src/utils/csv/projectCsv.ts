@@ -67,9 +67,9 @@ export function parseProjectCsv(text: string): ProjectCsvRow[] {
   }
 
   const headers = rows[0].map(normalizeHeader);
-  const hasExpectedHeaders = expectedHeaders.every(
-    (header, index) => headers[index] === header,
-  );
+  const hasExpectedHeaders =
+    headers.length === expectedHeaders.length &&
+    expectedHeaders.every((header, index) => headers[index] === header);
 
   if (!hasExpectedHeaders) {
     throw new Error(
@@ -78,6 +78,10 @@ export function parseProjectCsv(text: string): ProjectCsvRow[] {
   }
 
   return rows.slice(1).map((row, index) => {
+    if (row.length !== expectedHeaders.length) {
+      throw new Error(`Row ${index + 2}: CSV must have exactly 9 columns`);
+    }
+
     const title = normalizeText(row[0] ?? "");
     const supervisor = normalizeText(row[5] ?? "");
 
