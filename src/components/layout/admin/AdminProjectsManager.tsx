@@ -367,8 +367,9 @@ export function AdminProjectsManager() {
             <p className="mb-3 rounded-md border border-danger bg-danger/10 px-3 py-2 text-sm font-medium text-danger">
               CSV format must be exactly: title, student 1, student 2, student
               3, student 4, supervisor, co supervisor, industrial partner, sdg.
-              Leave empty student columns blank when a project has fewer than 4
-              students.
+              Co supervisor and extra student columns are
+              optional. The first row of the CSV file should contain the column
+              headers.
             </p>
             <input
               ref={fileInputRef}

@@ -83,26 +83,41 @@ export function parseProjectCsv(text: string): ProjectCsvRow[] {
     }
 
     const title = normalizeText(row[0] ?? "");
+    const students = row
+      .slice(1, 5)
+      .map((student) => normalizeText(student ?? ""))
+      .filter(Boolean);
     const supervisor = normalizeText(row[5] ?? "");
+    const industrialPartner = normalizeText(row[7] ?? "");
+    const sdg = normalizeText(row[8] ?? "");
 
     if (!title) {
       throw new Error(`Row ${index + 2}: title is required`);
+    }
+
+    if (students.length === 0) {
+      throw new Error(`Row ${index + 2}: at least one student is required`);
     }
 
     if (!supervisor) {
       throw new Error(`Row ${index + 2}: supervisor is required`);
     }
 
+    if (!industrialPartner) {
+      throw new Error(`Row ${index + 2}: industrial partner is required`);
+    }
+
+    if (!sdg) {
+      throw new Error(`Row ${index + 2}: sdg is required`);
+    }
+
     return {
       title,
-      students: row
-        .slice(1, 5)
-        .map((student) => normalizeText(student ?? ""))
-        .filter(Boolean),
+      students,
       supervisor,
       coSupervisor: normalizeText(row[6] ?? ""),
-      industrialPartner: normalizeText(row[7] ?? ""),
-      sdg: normalizeText(row[8] ?? ""),
+      industrialPartner,
+      sdg,
     };
   });
 }
