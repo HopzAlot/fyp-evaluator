@@ -1,19 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
-import { FormSelectField } from "@/components/fields/FormSelectField";
-import { FormTextField } from "@/components/fields/FormTextField";
+import { useEffect, useMemo, useState } from "react";
+import { ProjectEditRow } from "@/components/layout/admin/ProjectEditRow";
+import { ProjectImportPanel } from "@/components/layout/admin/ProjectImportPanel";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
-import { Button } from "@/components/ui/Button";
 import type {
   AdminProject,
   AdminProjectStatus,
-  ProjectCsvRow,
   ProjectUpdateRequest,
 } from "@/types/project";
-import { parseProjectCsv } from "@/utils/csv/projectCsv";
-import { noHtmlValidation } from "@/utils/validation/formValidation";
 
 const statusLabels: Record<AdminProjectStatus, string> = {
   pending: "Pending",
@@ -29,34 +24,13 @@ const statusStyles: Record<AdminProjectStatus, string> = {
   rejected: "bg-danger/10 text-danger",
 };
 
-const statusOptions = Object.entries(statusLabels).map(([value, label]) => ({
-  label,
-  value,
-}));
-
-const emptyProjectValues: ProjectUpdateRequest = {
-  title: "",
-  students: ["", "", "", ""],
-  supervisor: "",
-  coSupervisor: "",
-  industrialPartner: "",
-  sdg: "",
-  status: "pending",
-};
-
 export function AdminProjectsManager() {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [projects, setProjects] = useState<AdminProject[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingProject, setEditingProject] = useState<AdminProject | null>(
     null,
   );
-  const [previewFile, setPreviewFile] = useState<File | null>(null);
-  const [previewRows, setPreviewRows] = useState<ProjectCsvRow[]>([]);
-  const [dropzoneOpen, setDropzoneOpen] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [statusUpdatingId, setStatusUpdatingId] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -64,15 +38,6 @@ export function AdminProjectsManager() {
   const [message, setMessage] = useState("");
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const allSelected = projects.length > 0 && selectedIds.length === projects.length;
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { isSubmitting },
-  } = useForm<ProjectUpdateRequest>({
-    defaultValues: emptyProjectValues,
-    mode: "onChange",
-  });
   const counts = useMemo(
     () => ({
       total: projects.length,
@@ -136,82 +101,6 @@ export function AdminProjectsManager() {
     setSelectedIds(allSelected ? [] : projects.map((project) => project.id));
   };
 
-  const previewCsv = async (file: File) => {
-    setError("");
-    setMessage("");
-
-    if (!file.name.toLowerCase().endsWith(".csv") && file.type !== "text/csv") {
-      setError("Only CSV files are allowed");
-      return;
-    }
-
-    try {
-      const rows = parseProjectCsv(await file.text());
-
-      setPreviewFile(file);
-      setPreviewRows(rows);
-      setMessage(`${rows.length} project(s) ready to preview.`);
-    } catch (previewError) {
-      setPreviewFile(null);
-      setPreviewRows([]);
-      setError(
-        previewError instanceof Error
-          ? previewError.message
-          : "Unable to preview CSV",
-      );
-    }
-  };
-
-  const cancelPreview = () => {
-    setPreviewFile(null);
-    setPreviewRows([]);
-    setMessage("");
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const importPreview = async () => {
-    if (!previewFile) {
-      setError("Select a CSV file first");
-      return;
-    }
-
-    setError("");
-    setMessage("");
-    setUploading(true);
-
-    const formData = new FormData();
-    formData.append("file", previewFile);
-
-    const response = await fetch("/api/admin/projects/upload", {
-      method: "POST",
-      body: formData,
-    });
-    const data = (await response.json()) as {
-      projects?: AdminProject[];
-      message?: string;
-    };
-
-    setUploading(false);
-
-    if (!response.ok || !data.projects) {
-      setError(data.message ?? "Unable to upload projects");
-      return;
-    }
-
-    setProjects((currentProjects) => [...data.projects!, ...currentProjects]);
-    setMessage(`${data.projects.length} project(s) uploaded successfully.`);
-    setDropzoneOpen(false);
-    setPreviewFile(null);
-    setPreviewRows([]);
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
   const deleteProject = async (projectId: string) => {
     setError("");
     setMessage("");
@@ -273,35 +162,14 @@ export function AdminProjectsManager() {
     setMessage(`${data.deletedCount ?? 0} project(s) deleted successfully.`);
   };
 
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setDragActive(false);
-
-    const file = event.dataTransfer.files[0];
-
-    if (file) {
-      previewCsv(file);
-    }
-  };
-
   const startEdit = (project: AdminProject) => {
     setError("");
     setMessage("");
     setEditingProject(project);
-    reset({
-      title: project.title,
-      students: [...project.students, "", "", "", ""].slice(0, 4),
-      supervisor: project.supervisor,
-      coSupervisor: project.coSupervisor,
-      industrialPartner: project.industrialPartner,
-      sdg: project.sdg,
-      status: project.status,
-    });
   };
 
   const cancelEdit = () => {
     setEditingProject(null);
-    reset(emptyProjectValues);
   };
 
   const saveProject = async (values: ProjectUpdateRequest) => {
@@ -341,7 +209,6 @@ export function AdminProjectsManager() {
       ),
     );
     setEditingProject(null);
-    reset(emptyProjectValues);
     setMessage("Project updated successfully.");
   };
 
@@ -392,15 +259,6 @@ export function AdminProjectsManager() {
 
     if (editingProject?.id === data.project.id) {
       setEditingProject(data.project);
-      reset({
-        title: data.project.title,
-        students: [...data.project.students, "", "", "", ""].slice(0, 4),
-        supervisor: data.project.supervisor,
-        coSupervisor: data.project.coSupervisor,
-        industrialPartner: data.project.industrialPartner,
-        sdg: data.project.sdg,
-        status: data.project.status,
-      });
     }
 
     setMessage("Project status updated successfully.");
@@ -412,109 +270,12 @@ export function AdminProjectsManager() {
     }
 
     return (
-      <div className="border-t border-border bg-background px-5 py-4">
-        <form
-          className="rounded-lg border border-border bg-surface p-4"
-          noValidate
-          onSubmit={handleSubmit(saveProject)}
-        >
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-ink">Edit project</h3>
-              <p className="mt-1 text-sm text-muted">
-                Update project details and status.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={cancelEdit}
-              className="h-10 rounded-md border border-border px-3 text-sm font-semibold text-ink transition hover:bg-surface-muted"
-            >
-              Cancel
-            </button>
-          </div>
-
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <FormTextField
-              control={control}
-              name="title"
-              label="Title"
-              placeholder="Enter project title"
-              rules={{
-                required: "Project title is required",
-                validate: noHtmlValidation,
-              }}
-            />
-            {Array.from({ length: 4 }).map((_, index) => (
-              <FormTextField
-                key={index}
-                control={control}
-                name={`students.${index}` as const}
-                label={`Student ${index + 1}`}
-                placeholder={`Enter student ${index + 1}`}
-                rules={{
-                  required:
-                    index === 0 ? "At least one student is required" : false,
-                  validate: noHtmlValidation,
-                }}
-              />
-            ))}
-            <FormTextField
-              control={control}
-              name="supervisor"
-              label="Supervisor"
-              placeholder="Enter supervisor"
-              rules={{
-                required: "Supervisor is required",
-                validate: noHtmlValidation,
-              }}
-            />
-            <FormTextField
-              control={control}
-              name="coSupervisor"
-              label="Co Supervisor"
-              placeholder="Enter co supervisor"
-              rules={{ validate: noHtmlValidation }}
-            />
-            <FormTextField
-              control={control}
-              name="industrialPartner"
-              label="Industrial Partner"
-              placeholder="Enter industrial partner"
-              rules={{
-                required: "Industrial partner is required",
-                validate: noHtmlValidation,
-              }}
-            />
-            <FormTextField
-              control={control}
-              name="sdg"
-              label="SDG"
-              placeholder="Enter SDG"
-              rules={{
-                required: "SDG is required",
-                validate: noHtmlValidation,
-              }}
-            />
-            <FormSelectField
-              control={control}
-              name="status"
-              label="Status"
-              options={statusOptions}
-              rules={{ required: "Status is required" }}
-            />
-          </div>
-
-          <Button
-            type="submit"
-            className="mt-4"
-            loading={saving || isSubmitting}
-            loadingText="Saving"
-          >
-            Save changes
-          </Button>
-        </form>
-      </div>
+      <ProjectEditRow
+        project={project}
+        saving={saving}
+        onCancel={cancelEdit}
+        onSave={saveProject}
+      />
     );
   };
 
@@ -656,175 +417,47 @@ export function AdminProjectsManager() {
       </section>
 
       <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-        <div className="flex flex-col gap-4 border-b border-border px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-ink">
-              Imported projects
-            </h2>
-            {error ? (
-              <p className="mt-2 text-sm font-medium text-danger">{error}</p>
-            ) : null}
-            {message ? (
-              <p className="mt-2 text-sm font-medium text-accent">{message}</p>
-            ) : null}
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <Button
-              type="button"
-              loading={uploading}
-              loadingText="Uploading"
-              onClick={() => setDropzoneOpen((current) => !current)}
-            >
-              Upload CSV
-            </Button>
-            <button
-              type="button"
-              onClick={toggleAllProjects}
-              className="h-11 rounded-md border border-border px-4 text-sm font-semibold text-ink transition hover:bg-surface-muted"
-            >
-              {allSelected ? "Clear selection" : "Select all"}
-            </button>
-            <button
-              type="button"
-              onClick={deleteSelectedProjects}
-              disabled={deleting || selectedIds.length === 0}
-              className="h-11 rounded-md border border-border px-4 text-sm font-semibold text-danger transition hover:bg-danger/10 disabled:cursor-not-allowed disabled:text-muted"
-            >
-              Delete selected
-            </button>
-          </div>
-        </div>
-
-        {dropzoneOpen ? (
-          <div className="border-b border-border bg-background px-5 py-4">
-            <p className="mb-3 rounded-md border border-danger bg-danger/10 px-3 py-2 text-sm font-medium text-danger">
-              CSV format must be exactly: title, student 1, student 2, student
-              3, student 4, supervisor, co supervisor, industrial partner, sdg.
-              Co supervisor and extra student columns are
-              optional. The first row of the CSV file should contain the column
-              headers.
-            </p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,text/csv"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-
-                if (file) {
-                  previewCsv(file);
-                }
-              }}
-            />
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => fileInputRef.current?.click()}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  fileInputRef.current?.click();
-                }
-              }}
-              onDragEnter={(event) => {
-                event.preventDefault();
-                setDragActive(true);
-              }}
-              onDragOver={(event) => {
-                event.preventDefault();
-                setDragActive(true);
-              }}
-              onDragLeave={() => setDragActive(false)}
-              onDrop={handleDrop}
-              className={`flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed px-4 py-8 text-center transition ${
-                dragActive
-                  ? "border-primary bg-primary/10"
-                  : "border-border bg-surface hover:bg-surface-muted"
-              }`}
-            >
-              <p className="text-sm font-semibold text-ink">
-                Drop CSV file here
-              </p>
-              <p className="mt-1 text-sm text-muted">
-                or click to select a file from your device
-              </p>
+        <ProjectImportPanel
+          header={
+            <div>
+              <h2 className="text-base font-semibold text-ink">
+                Imported projects
+              </h2>
+              {error ? (
+                <p className="mt-2 text-sm font-medium text-danger">{error}</p>
+              ) : null}
+              {message ? (
+                <p className="mt-2 text-sm font-medium text-accent">
+                  {message}
+                </p>
+              ) : null}
             </div>
-            {previewRows.length > 0 ? (
-              <div className="mt-4 rounded-lg border border-border bg-surface">
-                <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h3 className="text-sm font-semibold text-ink">
-                      Preview import
-                    </h3>
-                    <p className="mt-1 text-sm text-muted">
-                      {previewRows.length} project(s) found in{" "}
-                      {previewFile?.name}.
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      loading={uploading}
-                      loadingText="Importing"
-                      onClick={importPreview}
-                    >
-                      Import
-                    </Button>
-                    <button
-                      type="button"
-                      onClick={cancelPreview}
-                      className="h-11 rounded-md border border-border px-4 text-sm font-semibold text-ink transition hover:bg-surface-muted"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-                <div className="max-h-72 overflow-auto">
-                  <table className="w-full min-w-[900px] text-left text-sm">
-                    <thead className="border-b border-border bg-surface-muted text-xs uppercase text-muted">
-                      <tr>
-                        <th className="px-4 py-3 font-semibold">Title</th>
-                        <th className="px-4 py-3 font-semibold">Students</th>
-                        <th className="px-4 py-3 font-semibold">Supervisor</th>
-                        <th className="px-4 py-3 font-semibold">
-                          Co Supervisor
-                        </th>
-                        <th className="px-4 py-3 font-semibold">
-                          Industrial Partner
-                        </th>
-                        <th className="px-4 py-3 font-semibold">SDG</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {previewRows.map((row, index) => (
-                        <tr key={`${row.title}-${index}`}>
-                          <td className="px-4 py-3 font-medium text-ink">
-                            {row.title}
-                          </td>
-                          <td className="px-4 py-3 text-muted">
-                            {row.students.join(", ")}
-                          </td>
-                          <td className="px-4 py-3 text-muted">
-                            {row.supervisor}
-                          </td>
-                          <td className="px-4 py-3 text-muted">
-                            {row.coSupervisor || "Not provided"}
-                          </td>
-                          <td className="px-4 py-3 text-muted">
-                            {row.industrialPartner}
-                          </td>
-                          <td className="px-4 py-3 text-muted">{row.sdg}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+          }
+          onError={setError}
+          onImported={(importedProjects) =>
+            setProjects((currentProjects) => [
+              ...importedProjects,
+              ...currentProjects,
+            ])
+          }
+          onMessage={setMessage}
+        >
+          <button
+            type="button"
+            onClick={toggleAllProjects}
+            className="h-11 rounded-md border border-border px-4 text-sm font-semibold text-ink transition hover:bg-surface-muted"
+          >
+            {allSelected ? "Clear selection" : "Select all"}
+          </button>
+          <button
+            type="button"
+            onClick={deleteSelectedProjects}
+            disabled={deleting || selectedIds.length === 0}
+            className="h-11 rounded-md border border-border px-4 text-sm font-semibold text-danger transition hover:bg-danger/10 disabled:cursor-not-allowed disabled:text-muted"
+          >
+            Delete selected
+          </button>
+        </ProjectImportPanel>
 
         <DataTable
           columns={columns}
