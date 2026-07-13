@@ -1,18 +1,9 @@
 import bcrypt from "bcryptjs";
-import { ObjectId, type Collection, type OptionalId } from "mongodb";
-import { getDatabase } from "@/lib/db/mongodb";
+import { isValidObjectId, type Types } from "mongoose";
+import { connectDatabase } from "@/lib/db/mongoose";
+import { UserModel, type UserDocument } from "@/models/User";
 import type { AuthUser, UserRole, UserStatus } from "@/types/auth";
 import type { FacultyDocument } from "./facultyService";
-
-export type UserDocument = {
-  _id: ObjectId;
-  email: string;
-  role: UserRole;
-  status: UserStatus;
-  passwordHash: string;
-  createdAt: Date;
-  updatedAt: Date;
-};
 
 type CreateUserAccountValues = {
   email: string;
@@ -21,45 +12,31 @@ type CreateUserAccountValues = {
   status: UserStatus;
 };
 
-async function getUsersCollection(): Promise<Collection<UserDocument>> {
-  const database = await getDatabase();
-  const collection = database.collection<UserDocument>("users");
-  await collection.createIndex({ email: 1 }, { unique: true });
-  return collection;
-}
-
 export async function createUserAccount(values: CreateUserAccountValues) {
-  const users = await getUsersCollection();
+  await connectDatabase();
   const email = values.email.toLowerCase().trim();
-  const existingUser = await users.findOne({ email });
+  const existingUser = await UserModel.exists({ email });
 
   if (existingUser) {
     return null;
   }
 
-  const now = new Date();
-  const user: OptionalId<UserDocument> = {
+  return UserModel.create({
     email,
     role: values.role,
     status: values.status,
     passwordHash: await bcrypt.hash(values.password, 12),
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  const result = await users.insertOne(user as UserDocument);
-
-  return { ...user, _id: result.insertedId } as UserDocument;
+  });
 }
 
-export async function deleteUserAccount(userId: ObjectId) {
-  const users = await getUsersCollection();
-  await users.deleteOne({ _id: userId });
+export async function deleteUserAccount(userId: Types.ObjectId) {
+  await connectDatabase();
+  await UserModel.deleteOne({ _id: userId });
 }
 
 export async function authenticateUser(email: string, password: string) {
-  const users = await getUsersCollection();
-  const user = await users.findOne({ email: email.toLowerCase().trim() });
+  await connectDatabase();
+  const user = await UserModel.findOne({ email: email.toLowerCase().trim() });
 
   if (!user) {
     return null;
@@ -71,12 +48,12 @@ export async function authenticateUser(email: string, password: string) {
 }
 
 export async function getUserById(userId: string) {
-  if (!ObjectId.isValid(userId)) {
+  if (!isValidObjectId(userId)) {
     return null;
   }
 
-  const users = await getUsersCollection();
-  return users.findOne({ _id: new ObjectId(userId) });
+  await connectDatabase();
+  return UserModel.findById(userId);
 }
 
 export function toAuthUser(
