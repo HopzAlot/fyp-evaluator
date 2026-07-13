@@ -1,5 +1,91 @@
 import { NextResponse } from "next/server";
-import { deleteProjectById } from "@/services/projectService";
+import {
+  deleteProjectById,
+  updateProjectById,
+} from "@/services/projectService";
+import type { AdminProjectStatus, ProjectUpdateRequest } from "@/types/project";
+import { normalizeText } from "@/utils/normalization/facultyNormalization";
+
+const statuses: AdminProjectStatus[] = [
+  "pending",
+  "under-review",
+  "accepted",
+  "rejected",
+];
+
+function validateProjectPayload(payload: unknown): ProjectUpdateRequest {
+  const values = payload as Partial<ProjectUpdateRequest>;
+  const title = normalizeText(values.title ?? "");
+  const students = Array.isArray(values.students)
+    ? values.students
+        .slice(0, 4)
+        .map((student) => normalizeText(student ?? ""))
+        .filter(Boolean)
+    : [];
+  const supervisor = normalizeText(values.supervisor ?? "");
+  const coSupervisor = normalizeText(values.coSupervisor ?? "");
+  const industrialPartner = normalizeText(values.industrialPartner ?? "");
+  const sdg = normalizeText(values.sdg ?? "");
+
+  if (!title) {
+    throw new Error("Title is required");
+  }
+
+  if (students.length === 0) {
+    throw new Error("At least one student is required");
+  }
+
+  if (!supervisor) {
+    throw new Error("Supervisor is required");
+  }
+
+  if (!industrialPartner) {
+    throw new Error("Industrial partner is required");
+  }
+
+  if (!sdg) {
+    throw new Error("SDG is required");
+  }
+
+  if (!values.status || !statuses.includes(values.status)) {
+    throw new Error("Select a valid status");
+  }
+
+  return {
+    title,
+    students,
+    supervisor,
+    coSupervisor,
+    industrialPartner,
+    sdg,
+    status: values.status,
+  };
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ projectId: string }> },
+) {
+  try {
+    const { projectId } = await params;
+    const values = validateProjectPayload(await request.json());
+    const project = await updateProjectById(projectId, values);
+
+    if (!project) {
+      return NextResponse.json(
+        { message: "Project not found" },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({ project });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unable to update project";
+
+    return NextResponse.json({ message }, { status: 400 });
+  }
+}
 
 export async function DELETE(
   _request: Request,

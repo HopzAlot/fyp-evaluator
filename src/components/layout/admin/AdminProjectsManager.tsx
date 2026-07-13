@@ -3,7 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
-import type { AdminProject, AdminProjectStatus } from "@/types/project";
+import type {
+  AdminProject,
+  AdminProjectStatus,
+  ProjectCsvRow,
+  ProjectUpdateRequest,
+} from "@/types/project";
+import { parseProjectCsv } from "@/utils/csv/projectCsv";
 
 const statusLabels: Record<AdminProjectStatus, string> = {
   pending: "Pending",
@@ -23,10 +29,20 @@ export function AdminProjectsManager() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [projects, setProjects] = useState<AdminProject[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [editingProject, setEditingProject] = useState<AdminProject | null>(
+    null,
+  );
+  const [editValues, setEditValues] = useState<ProjectUpdateRequest | null>(
+    null,
+  );
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [previewRows, setPreviewRows] = useState<ProjectCsvRow[]>([]);
   const [dropzoneOpen, setDropzoneOpen] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [statusUpdatingId, setStatusUpdatingId] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -95,7 +111,7 @@ export function AdminProjectsManager() {
     setSelectedIds(allSelected ? [] : projects.map((project) => project.id));
   };
 
-  const uploadCsv = async (file: File) => {
+  const previewCsv = async (file: File) => {
     setError("");
     setMessage("");
 
@@ -104,10 +120,45 @@ export function AdminProjectsManager() {
       return;
     }
 
+    try {
+      const rows = parseProjectCsv(await file.text());
+
+      setPreviewFile(file);
+      setPreviewRows(rows);
+      setMessage(`${rows.length} project(s) ready to preview.`);
+    } catch (previewError) {
+      setPreviewFile(null);
+      setPreviewRows([]);
+      setError(
+        previewError instanceof Error
+          ? previewError.message
+          : "Unable to preview CSV",
+      );
+    }
+  };
+
+  const cancelPreview = () => {
+    setPreviewFile(null);
+    setPreviewRows([]);
+    setMessage("");
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const importPreview = async () => {
+    if (!previewFile) {
+      setError("Select a CSV file first");
+      return;
+    }
+
+    setError("");
+    setMessage("");
     setUploading(true);
 
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", previewFile);
 
     const response = await fetch("/api/admin/projects/upload", {
       method: "POST",
@@ -128,6 +179,8 @@ export function AdminProjectsManager() {
     setProjects((currentProjects) => [...data.projects!, ...currentProjects]);
     setMessage(`${data.projects.length} project(s) uploaded successfully.`);
     setDropzoneOpen(false);
+    setPreviewFile(null);
+    setPreviewRows([]);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -202,8 +255,142 @@ export function AdminProjectsManager() {
     const file = event.dataTransfer.files[0];
 
     if (file) {
-      uploadCsv(file);
+      previewCsv(file);
     }
+  };
+
+  const startEdit = (project: AdminProject) => {
+    setError("");
+    setMessage("");
+    setEditingProject(project);
+    setEditValues({
+      title: project.title,
+      students: [...project.students, "", "", "", ""].slice(0, 4),
+      supervisor: project.supervisor,
+      coSupervisor: project.coSupervisor,
+      industrialPartner: project.industrialPartner,
+      sdg: project.sdg,
+      status: project.status,
+    });
+  };
+
+  const updateEditValue = (
+    field: keyof Omit<ProjectUpdateRequest, "students">,
+    value: string,
+  ) => {
+    setEditValues((currentValues) =>
+      currentValues ? { ...currentValues, [field]: value } : currentValues,
+    );
+  };
+
+  const updateEditStudent = (index: number, value: string) => {
+    setEditValues((currentValues) => {
+      if (!currentValues) {
+        return currentValues;
+      }
+
+      const students = [...currentValues.students];
+      students[index] = value;
+
+      return { ...currentValues, students };
+    });
+  };
+
+  const saveProject = async () => {
+    if (!editingProject || !editValues) {
+      return;
+    }
+
+    setError("");
+    setMessage("");
+    setSaving(true);
+
+    const response = await fetch(`/api/admin/projects/${editingProject.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editValues),
+    });
+    const data = (await response.json()) as {
+      project?: AdminProject;
+      message?: string;
+    };
+
+    setSaving(false);
+
+    if (!response.ok || !data.project) {
+      setError(data.message ?? "Unable to update project");
+      return;
+    }
+
+    setProjects((currentProjects) =>
+      currentProjects.map((project) =>
+        project.id === data.project?.id ? data.project : project,
+      ),
+    );
+    setEditingProject(null);
+    setEditValues(null);
+    setMessage("Project updated successfully.");
+  };
+
+  const updateProjectStatus = async (
+    project: AdminProject,
+    status: AdminProjectStatus,
+  ) => {
+    if (project.status === status) {
+      return;
+    }
+
+    setError("");
+    setMessage("");
+    setStatusUpdatingId(project.id);
+
+    const payload: ProjectUpdateRequest = {
+      title: project.title,
+      students: project.students,
+      supervisor: project.supervisor,
+      coSupervisor: project.coSupervisor,
+      industrialPartner: project.industrialPartner,
+      sdg: project.sdg,
+      status,
+    };
+
+    const response = await fetch(`/api/admin/projects/${project.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = (await response.json()) as {
+      project?: AdminProject;
+      message?: string;
+    };
+
+    setStatusUpdatingId("");
+
+    if (!response.ok || !data.project) {
+      setError(data.message ?? "Unable to update project status");
+      return;
+    }
+
+    setProjects((currentProjects) =>
+      currentProjects.map((currentProject) =>
+        currentProject.id === data.project?.id ? data.project : currentProject,
+      ),
+    );
+
+    if (editingProject?.id === data.project.id) {
+      setEditingProject(data.project);
+      setEditValues({
+        title: data.project.title,
+        students: [...data.project.students, "", "", "", ""].slice(0, 4),
+        supervisor: data.project.supervisor,
+        coSupervisor: data.project.coSupervisor,
+        industrialPartner: data.project.industrialPartner,
+        sdg: data.project.sdg,
+        status: data.project.status,
+      });
+    }
+
+    setMessage("Project status updated successfully.");
   };
 
   const columns: DataTableColumn<AdminProject>[] = [
@@ -272,13 +459,26 @@ export function AdminProjectsManager() {
       key: "status",
       header: "Status",
       render: (project) => (
-        <span
-          className={`inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ${
+        <select
+          value={project.status}
+          disabled={statusUpdatingId === project.id}
+          onChange={(event) =>
+            updateProjectStatus(
+              project,
+              event.target.value as AdminProjectStatus,
+            )
+          }
+          className={`h-9 rounded-md border border-border px-2.5 text-xs font-semibold outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-70 ${
             statusStyles[project.status]
           }`}
+          aria-label={`Change status for ${project.title}`}
         >
-          {statusLabels[project.status]}
-        </span>
+          {Object.entries(statusLabels).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
       ),
     },
     {
@@ -286,14 +486,23 @@ export function AdminProjectsManager() {
       header: "Action",
       className: "text-right",
       render: (project) => (
-        <button
-          type="button"
-          onClick={() => deleteProject(project.id)}
-          disabled={deleting}
-          className="h-9 rounded-md border border-border px-3 text-sm font-semibold text-danger transition hover:bg-danger/10 disabled:cursor-not-allowed disabled:text-muted"
-        >
-          Delete
-        </button>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => startEdit(project)}
+            className="h-9 rounded-md border border-border px-3 text-sm font-semibold text-ink transition hover:bg-surface-muted"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => deleteProject(project.id)}
+            disabled={deleting}
+            className="h-9 rounded-md border border-border px-3 text-sm font-semibold text-danger transition hover:bg-danger/10 disabled:cursor-not-allowed disabled:text-muted"
+          >
+            Delete
+          </button>
+        </div>
       ),
     },
   ];
@@ -380,7 +589,7 @@ export function AdminProjectsManager() {
                 const file = event.target.files?.[0];
 
                 if (file) {
-                  uploadCsv(file);
+                  previewCsv(file);
                 }
               }}
             />
@@ -416,6 +625,206 @@ export function AdminProjectsManager() {
               <p className="mt-1 text-sm text-muted">
                 or click to select a file from your device
               </p>
+            </div>
+            {previewRows.length > 0 ? (
+              <div className="mt-4 rounded-lg border border-border bg-surface">
+                <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-ink">
+                      Preview import
+                    </h3>
+                    <p className="mt-1 text-sm text-muted">
+                      {previewRows.length} project(s) found in{" "}
+                      {previewFile?.name}.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      loading={uploading}
+                      loadingText="Importing"
+                      onClick={importPreview}
+                    >
+                      Import
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={cancelPreview}
+                      className="h-11 rounded-md border border-border px-4 text-sm font-semibold text-ink transition hover:bg-surface-muted"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+                <div className="max-h-72 overflow-auto">
+                  <table className="w-full min-w-[900px] text-left text-sm">
+                    <thead className="border-b border-border bg-surface-muted text-xs uppercase text-muted">
+                      <tr>
+                        <th className="px-4 py-3 font-semibold">Title</th>
+                        <th className="px-4 py-3 font-semibold">Students</th>
+                        <th className="px-4 py-3 font-semibold">Supervisor</th>
+                        <th className="px-4 py-3 font-semibold">
+                          Co Supervisor
+                        </th>
+                        <th className="px-4 py-3 font-semibold">
+                          Industrial Partner
+                        </th>
+                        <th className="px-4 py-3 font-semibold">SDG</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {previewRows.map((row, index) => (
+                        <tr key={`${row.title}-${index}`}>
+                          <td className="px-4 py-3 font-medium text-ink">
+                            {row.title}
+                          </td>
+                          <td className="px-4 py-3 text-muted">
+                            {row.students.join(", ")}
+                          </td>
+                          <td className="px-4 py-3 text-muted">
+                            {row.supervisor}
+                          </td>
+                          <td className="px-4 py-3 text-muted">
+                            {row.coSupervisor || "Not provided"}
+                          </td>
+                          <td className="px-4 py-3 text-muted">
+                            {row.industrialPartner}
+                          </td>
+                          <td className="px-4 py-3 text-muted">{row.sdg}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {editingProject && editValues ? (
+          <div className="border-b border-border bg-background px-5 py-4">
+            <div className="rounded-lg border border-border bg-surface p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-ink">
+                    Edit project
+                  </h3>
+                  <p className="mt-1 text-sm text-muted">
+                    Update project details and status.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingProject(null);
+                    setEditValues(null);
+                  }}
+                  className="h-10 rounded-md border border-border px-3 text-sm font-semibold text-ink transition hover:bg-surface-muted"
+                >
+                  Cancel
+                </button>
+              </div>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <label className="space-y-2">
+                  <span className="block text-sm font-medium text-ink">
+                    Title
+                  </span>
+                  <input
+                    value={editValues.title}
+                    onChange={(event) =>
+                      updateEditValue("title", event.target.value)
+                    }
+                    className="h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  />
+                </label>
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <label key={index} className="space-y-2">
+                    <span className="block text-sm font-medium text-ink">
+                      Student {index + 1}
+                    </span>
+                    <input
+                      value={editValues.students[index] ?? ""}
+                      onChange={(event) =>
+                        updateEditStudent(index, event.target.value)
+                      }
+                      className="h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+                    />
+                  </label>
+                ))}
+                <label className="space-y-2">
+                  <span className="block text-sm font-medium text-ink">
+                    Supervisor
+                  </span>
+                  <input
+                    value={editValues.supervisor}
+                    onChange={(event) =>
+                      updateEditValue("supervisor", event.target.value)
+                    }
+                    className="h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  />
+                </label>
+                <label className="space-y-2">
+                  <span className="block text-sm font-medium text-ink">
+                    Co Supervisor
+                  </span>
+                  <input
+                    value={editValues.coSupervisor}
+                    onChange={(event) =>
+                      updateEditValue("coSupervisor", event.target.value)
+                    }
+                    className="h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  />
+                </label>
+                <label className="space-y-2">
+                  <span className="block text-sm font-medium text-ink">
+                    Industrial Partner
+                  </span>
+                  <input
+                    value={editValues.industrialPartner}
+                    onChange={(event) =>
+                      updateEditValue("industrialPartner", event.target.value)
+                    }
+                    className="h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  />
+                </label>
+                <label className="space-y-2">
+                  <span className="block text-sm font-medium text-ink">SDG</span>
+                  <input
+                    value={editValues.sdg}
+                    onChange={(event) =>
+                      updateEditValue("sdg", event.target.value)
+                    }
+                    className="h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  />
+                </label>
+                <label className="space-y-2">
+                  <span className="block text-sm font-medium text-ink">
+                    Status
+                  </span>
+                  <select
+                    value={editValues.status}
+                    onChange={(event) =>
+                      updateEditValue("status", event.target.value)
+                    }
+                    className="h-11 w-full rounded-md border border-border bg-surface px-3 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  >
+                    {Object.entries(statusLabels).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <Button
+                type="button"
+                className="mt-4"
+                loading={saving}
+                loadingText="Saving"
+                onClick={saveProject}
+              >
+                Save changes
+              </Button>
             </div>
           </div>
         ) : null}

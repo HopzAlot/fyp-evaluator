@@ -23,3 +23,7 @@ export type ProjectCsvRow = {
   industrialPartner: string;
   sdg: string;
 };
+
+export type ProjectUpdateRequest = ProjectCsvRow & {
+  status: AdminProjectStatus;
+};

@@ -1,7 +1,11 @@
 import { isValidObjectId } from "mongoose";
 import { connectDatabase } from "@/lib/db/mongoose";
 import { ProjectModel, type ProjectDocument } from "@/models/Project";
-import type { AdminProject, ProjectCsvRow } from "@/types/project";
+import type {
+  AdminProject,
+  ProjectCsvRow,
+  ProjectUpdateRequest,
+} from "@/types/project";
 
 export function toAdminProject(project: ProjectDocument): AdminProject {
   return {
@@ -46,6 +50,23 @@ export async function deleteProjectById(projectId: string) {
   const result = await ProjectModel.deleteOne({ _id: projectId });
 
   return result.deletedCount;
+}
+
+export async function updateProjectById(
+  projectId: string,
+  values: ProjectUpdateRequest,
+) {
+  if (!isValidObjectId(projectId)) {
+    return null;
+  }
+
+  await connectDatabase();
+  const project = await ProjectModel.findByIdAndUpdate(projectId, values, {
+    new: true,
+    runValidators: true,
+  });
+
+  return project ? toAdminProject(project) : null;
 }
 
 export async function deleteProjectsByIds(projectIds: string[]) {
