@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
+import { Button } from "@/components/ui/Button";
 import type { AdminFacultyUser, UserStatus } from "@/types/auth";
 
 const statLabels = [
@@ -18,8 +19,10 @@ export function AdminFacultyManager({
   initialFaculty,
 }: AdminFacultyManagerProps) {
   const [faculty, setFaculty] = useState<AdminFacultyUser[]>(initialFaculty);
+  const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
   const counts = useMemo(
     () => ({
       total: faculty.length,
@@ -28,6 +31,55 @@ export function AdminFacultyManager({
     }),
     [faculty],
   );
+  const filteredFaculty = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+
+    if (!query) {
+      return faculty;
+    }
+
+    return faculty.filter((item) =>
+      [
+        item.fullName,
+        item.email,
+        item.department,
+        item.designation,
+        item.contactNumber,
+        item.status,
+      ]
+        .filter(Boolean)
+        .some((value) => value?.toLowerCase().includes(query)),
+    );
+  }, [faculty, searchTerm]);
+
+  const refreshFaculty = async () => {
+    setError("");
+    setRefreshing(true);
+
+    try {
+      const response = await fetch("/api/admin/faculty", {
+        cache: "no-store",
+      });
+      const data = (await response.json()) as {
+        faculty?: AdminFacultyUser[];
+        message?: string;
+      };
+
+      if (!response.ok || !data.faculty) {
+        throw new Error(data.message ?? "Unable to refresh faculty users");
+      }
+
+      setFaculty(data.faculty);
+    } catch (refreshError) {
+      setError(
+        refreshError instanceof Error
+          ? refreshError.message
+          : "Unable to refresh faculty users",
+      );
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const updateStatus = async (userId: string, status: UserStatus) => {
     setError("");
@@ -124,18 +176,43 @@ export function AdminFacultyManager({
 
       <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
         <div className="border-b border-border px-5 py-4">
-          <h2 className="text-base font-semibold text-ink">
-            Registered faculty
-          </h2>
-          {error ? (
-            <p className="mt-2 text-sm font-medium text-danger">{error}</p>
-          ) : null}
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-ink">
+                Registered faculty
+              </h2>
+              {error ? (
+                <p className="mt-2 text-sm font-medium text-danger">{error}</p>
+              ) : null}
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search faculty"
+                className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm text-ink outline-none transition placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/15 sm:w-72"
+              />
+              <Button
+                type="button"
+                loading={refreshing}
+                loadingText="Refreshing"
+                onClick={refreshFaculty}
+              >
+                Refresh
+              </Button>
+            </div>
+          </div>
         </div>
 
         <DataTable
           columns={columns}
-          data={faculty}
-          emptyMessage="No faculty users found"
+          data={filteredFaculty}
+          emptyMessage={
+            searchTerm.trim()
+              ? "No faculty users match your search"
+              : "No faculty users found"
+          }
           getRowKey={(item) => item.id}
         />
       </section>
