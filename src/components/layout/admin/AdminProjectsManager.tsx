@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ProjectEditRow } from "@/components/layout/admin/ProjectEditRow";
 import { ProjectImportPanel } from "@/components/layout/admin/ProjectImportPanel";
+import { Button } from "@/components/ui/Button";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import type {
   AdminProject,
@@ -38,11 +39,13 @@ export function AdminProjectsManager({
   initialProjects,
 }: AdminProjectsManagerProps) {
   const [projects, setProjects] = useState<AdminProject[]>(initialProjects);
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingProject, setEditingProject] = useState<AdminProject | null>(
     null,
   );
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [statusUpdatingId, setStatusUpdatingId] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [cleaningOldDuplicates, setCleaningOldDuplicates] = useState(false);
@@ -54,7 +57,31 @@ export function AdminProjectsManager({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const allSelected = projects.length > 0 && selectedIds.length === projects.length;
+  const filteredProjects = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+
+    if (!query) {
+      return projects;
+    }
+
+    return projects.filter((project) =>
+      [
+        project.title,
+        project.supervisor,
+        project.coSupervisor,
+        project.industrialPartner,
+        project.sdg,
+        statusLabels[project.status],
+        project.status,
+        ...project.students,
+      ]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(query)),
+    );
+  }, [projects, searchTerm]);
+  const allSelected =
+    filteredProjects.length > 0 &&
+    filteredProjects.every((project) => selectedIdSet.has(project.id));
   const counts = useMemo(
     () => ({
       total: projects.length,
@@ -63,6 +90,45 @@ export function AdminProjectsManager({
     }),
     [projects],
   );
+
+  const refreshProjects = async () => {
+    setError("");
+    setMessage("");
+    setRefreshing(true);
+
+    try {
+      const response = await fetch("/api/admin/projects", {
+        cache: "no-store",
+      });
+      const data = (await response.json()) as {
+        projects?: AdminProject[];
+        message?: string;
+      };
+
+      if (!response.ok || !data.projects) {
+        throw new Error(data.message ?? "Unable to refresh projects");
+      }
+
+      const refreshedIds = new Set(data.projects.map((project) => project.id));
+      setProjects(data.projects);
+      setSelectedIds((currentIds) =>
+        currentIds.filter((projectId) => refreshedIds.has(projectId)),
+      );
+      setEditingProject((currentProject) =>
+        currentProject && refreshedIds.has(currentProject.id)
+          ? currentProject
+          : null,
+      );
+    } catch (refreshError) {
+      setError(
+        refreshError instanceof Error
+          ? refreshError.message
+          : "Unable to refresh projects",
+      );
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const toggleProject = (projectId: string) => {
     setSelectedIds((currentIds) =>
@@ -73,7 +139,18 @@ export function AdminProjectsManager({
   };
 
   const toggleAllProjects = () => {
-    setSelectedIds(allSelected ? [] : projects.map((project) => project.id));
+    const visibleIds = filteredProjects.map((project) => project.id);
+
+    if (allSelected) {
+      setSelectedIds((currentIds) =>
+        currentIds.filter((projectId) => !visibleIds.includes(projectId)),
+      );
+      return;
+    }
+
+    setSelectedIds((currentIds) =>
+      Array.from(new Set([...currentIds, ...visibleIds])),
+    );
   };
 
   const deleteProject = async (projectId: string) => {
@@ -475,6 +552,21 @@ export function AdminProjectsManager({
           }
           onMessage={setMessage}
         >
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search projects"
+            className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm text-ink outline-none transition placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/15 sm:w-72"
+          />
+          <Button
+            type="button"
+            loading={refreshing}
+            loadingText="Refreshing"
+            onClick={refreshProjects}
+          >
+            Refresh
+          </Button>
           <button
             type="button"
             onClick={toggleAllProjects}
@@ -502,8 +594,12 @@ export function AdminProjectsManager({
 
         <DataTable
           columns={columns}
-          data={projects}
-          emptyMessage="No projects imported yet"
+          data={filteredProjects}
+          emptyMessage={
+            searchTerm.trim()
+              ? "No projects match your search"
+              : "No projects imported yet"
+          }
           getRowKey={(project) => project.id}
           minWidth="1120px"
           renderExpandedRow={renderProjectEditForm}
