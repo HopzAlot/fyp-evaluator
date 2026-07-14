@@ -5,7 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
 import type { AdminFacultyUser, UserStatus } from "@/types/auth";
-import { filterFaculty } from "@/utils/search/facultySearch";
+import { filterFaculty } from "@/utils/search/searchFilters";
 
 const statLabels = [
   { key: "total", label: "Total faculty" },

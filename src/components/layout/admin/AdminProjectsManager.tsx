@@ -11,7 +11,7 @@ import type {
   ProjectStatus,
   ProjectUpdateRequest,
 } from "@/types/project";
-import { filterProjects } from "@/utils/search/projectSearch";
+import { filterProjects } from "@/utils/search/searchFilters";
 
 const statusLabels: Record<ProjectStatus, string> = {
   pending: "Pending",

@@ -6,7 +6,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import type { FacultyProject } from "@/types/project";
-import { filterProjects } from "@/utils/search/projectSearch";
+import { filterProjects } from "@/utils/search/searchFilters";
 
 type ProjectsTableProps = {
   projects: FacultyProject[];
