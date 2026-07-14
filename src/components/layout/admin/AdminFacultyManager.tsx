@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
 import type { AdminFacultyUser, UserStatus } from "@/types/auth";
+import { filterFaculty } from "@/utils/search/facultySearch";
 
 const statLabels = [
   { key: "total", label: "Total faculty" },
@@ -18,11 +20,12 @@ type AdminFacultyManagerProps = {
 export function AdminFacultyManager({
   initialFaculty,
 }: AdminFacultyManagerProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [faculty, setFaculty] = useState<AdminFacultyUser[]>(initialFaculty);
   const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
   const counts = useMemo(
     () => ({
       total: faculty.length,
@@ -31,54 +34,17 @@ export function AdminFacultyManager({
     }),
     [faculty],
   );
-  const filteredFaculty = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
+  const filteredFaculty = useMemo(
+    () => filterFaculty(faculty, searchTerm),
+    [faculty, searchTerm],
+  );
 
-    if (!query) {
-      return faculty;
-    }
-
-    return faculty.filter((item) =>
-      [
-        item.fullName,
-        item.email,
-        item.department,
-        item.designation,
-        item.contactNumber,
-        item.status,
-      ]
-        .filter(Boolean)
-        .some((value) => value?.toLowerCase().includes(query)),
-    );
-  }, [faculty, searchTerm]);
-
-  const refreshFaculty = async () => {
+  const refreshFaculty = () => {
     setError("");
-    setRefreshing(true);
 
-    try {
-      const response = await fetch("/api/admin/faculty", {
-        cache: "no-store",
-      });
-      const data = (await response.json()) as {
-        faculty?: AdminFacultyUser[];
-        message?: string;
-      };
-
-      if (!response.ok || !data.faculty) {
-        throw new Error(data.message ?? "Unable to refresh faculty users");
-      }
-
-      setFaculty(data.faculty);
-    } catch (refreshError) {
-      setError(
-        refreshError instanceof Error
-          ? refreshError.message
-          : "Unable to refresh faculty users",
-      );
-    } finally {
-      setRefreshing(false);
-    }
+    startTransition(() => {
+      router.refresh();
+    });
   };
 
   const updateStatus = async (userId: string, status: UserStatus) => {
@@ -195,7 +161,7 @@ export function AdminFacultyManager({
               />
               <Button
                 type="button"
-                loading={refreshing}
+                loading={isPending}
                 loadingText="Refreshing"
                 onClick={refreshFaculty}
               >

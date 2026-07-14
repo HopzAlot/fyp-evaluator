@@ -3,6 +3,12 @@ import { getAdminFacultyUsers } from "@/services/userService";
 
 export default async function AdminFacultyPage() {
   const faculty = await getAdminFacultyUsers();
+  const facultyKey = faculty
+    .map(
+      (item) =>
+        `${item.id}:${item.status}:${item.fullName ?? ""}:${item.email}:${item.department ?? ""}:${item.designation ?? ""}`,
+    )
+    .join("|");
 
   return (
     <div className="space-y-6">
@@ -15,7 +21,7 @@ export default async function AdminFacultyPage() {
         </p>
       </section>
 
-      <AdminFacultyManager initialFaculty={faculty} />
+      <AdminFacultyManager key={facultyKey} initialFaculty={faculty} />
     </div>
   );
 }
