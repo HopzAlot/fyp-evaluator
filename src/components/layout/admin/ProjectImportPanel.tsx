@@ -82,6 +82,7 @@ export function ProjectImportPanel({
     });
     const data = (await response.json()) as {
       projects?: AdminProject[];
+      skippedCount?: number;
       message?: string;
     };
 
@@ -93,7 +94,11 @@ export function ProjectImportPanel({
     }
 
     onImported(data.projects);
-    onMessage(`${data.projects.length} project(s) uploaded successfully.`);
+    onMessage(
+      data.skippedCount
+        ? `${data.projects.length} project(s) uploaded successfully. ${data.skippedCount} duplicate project(s) skipped.`
+        : `${data.projects.length} project(s) uploaded successfully.`,
+    );
     setDropzoneOpen(false);
     setPreviewFile(null);
     setPreviewRows([]);

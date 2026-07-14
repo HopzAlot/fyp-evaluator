@@ -8,6 +8,7 @@ import {
 import type { ProjectStatus } from "@/types/project";
 
 type Project = {
+  projectKey: string;
   title: string;
   students: string[];
   supervisor: string;
@@ -23,6 +24,13 @@ export type ProjectDocument = HydratedDocument<Project>;
 
 const ProjectSchema = new Schema<Project>(
   {
+    projectKey: {
+      type: String,
+      required: true,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
     title: {
       type: String,
       required: true,

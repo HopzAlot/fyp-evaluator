@@ -7,6 +7,24 @@ import type {
   ProjectUpdateRequest,
 } from "@/types/project";
 
+function normalizeProjectKeyPart(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+export function buildProjectKey(project: Pick<ProjectBase, "title" | "students" | "supervisor">) {
+  const students = project.students
+    .map(normalizeProjectKeyPart)
+    .filter(Boolean)
+    .sort()
+    .join("|");
+
+  return [
+    normalizeProjectKeyPart(project.title),
+    normalizeProjectKeyPart(project.supervisor),
+    students,
+  ].join("::");
+}
+
 export function toAdminProject(project: ProjectDocument): AdminProject {
   return {
     id: project._id.toString(),
@@ -30,15 +48,45 @@ export async function getAdminProjects() {
 export async function createProjectsFromCsvRows(rows: ProjectBase[]) {
   await connectDatabase();
 
+  const projectRows = rows.map((row) => ({
+    ...row,
+    projectKey: buildProjectKey(row),
+  }));
+  const uniqueRows = Array.from(
+    new Map(projectRows.map((row) => [row.projectKey, row])).values(),
+  );
+  const existingProjects = await ProjectModel.find().select(
+    "projectKey title students supervisor",
+  );
+  const existingKeys = new Set(
+    existingProjects.map((project) =>
+      project.projectKey || buildProjectKey(project),
+    ),
+  );
+  const rowsToInsert = uniqueRows.filter(
+    (row) => !existingKeys.has(row.projectKey),
+  );
+  const skippedCount = rows.length - rowsToInsert.length;
+
+  if (rowsToInsert.length === 0) {
+    return {
+      projects: [],
+      skippedCount,
+    };
+  }
+
   const projects = await ProjectModel.insertMany(
-    rows.map((row) => ({
+    rowsToInsert.map((row) => ({
       ...row,
       status: "pending",
     })),
     { ordered: false },
   );
 
-  return projects.map(toAdminProject);
+  return {
+    projects: projects.map(toAdminProject),
+    skippedCount,
+  };
 }
 
 export async function deleteProjectById(projectId: string) {
@@ -61,10 +109,31 @@ export async function updateProjectById(
   }
 
   await connectDatabase();
-  const project = await ProjectModel.findByIdAndUpdate(projectId, values, {
-    new: true,
-    runValidators: true,
-  });
+  const projectKey = buildProjectKey(values);
+  const existingProjects = await ProjectModel.find({
+    _id: { $ne: projectId },
+  }).select("projectKey title students supervisor");
+  const duplicateProject = existingProjects.some(
+    (project) => (project.projectKey || buildProjectKey(project)) === projectKey,
+  );
+
+  if (duplicateProject) {
+    throw new Error(
+      "A project with the same title, supervisor, and students already exists",
+    );
+  }
+
+  const project = await ProjectModel.findByIdAndUpdate(
+    projectId,
+    {
+      ...values,
+      projectKey,
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
 
   return project ? toAdminProject(project) : null;
 }

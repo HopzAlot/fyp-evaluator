@@ -15,10 +15,22 @@ export async function POST(request: Request) {
     }
 
     const rows = parseProjectCsv(await file.text());
-    const projects = await createProjectsFromCsvRows(rows);
+    const { projects, skippedCount } = await createProjectsFromCsvRows(rows);
 
-    return NextResponse.json({ projects }, { status: 201 });
+    return NextResponse.json({ projects, skippedCount }, { status: 201 });
   } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === 11000
+    ) {
+      return NextResponse.json(
+        { message: "Duplicate projects were found in this upload" },
+        { status: 400 },
+      );
+    }
+
     const message =
       error instanceof Error ? error.message : "Unable to upload projects";
 

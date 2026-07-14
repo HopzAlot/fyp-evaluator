@@ -80,6 +80,18 @@ export async function PATCH(
 
     return NextResponse.json({ project });
   } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === 11000
+    ) {
+      return NextResponse.json(
+        { message: "A project with the same title, supervisor, and students already exists" },
+        { status: 400 },
+      );
+    }
+
     const message =
       error instanceof Error ? error.message : "Unable to update project";
 
