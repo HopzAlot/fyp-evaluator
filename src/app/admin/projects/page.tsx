@@ -1,6 +1,9 @@
 import { AdminProjectsManager } from "@/components/layout/admin/AdminProjectsManager";
+import { getAdminProjects } from "@/services/projectService";
 
-export default function AdminProjectsPage() {
+export default async function AdminProjectsPage() {
+  const projects = await getAdminProjects();
+
   return (
     <div className="space-y-6">
       <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -15,7 +18,7 @@ export default function AdminProjectsPage() {
         </div>
       </section>
 
-      <AdminProjectsManager />
+      <AdminProjectsManager initialProjects={projects} />
     </div>
   );
 }

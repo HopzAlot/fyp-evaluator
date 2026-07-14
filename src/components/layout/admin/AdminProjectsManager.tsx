@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ProjectEditRow } from "@/components/layout/admin/ProjectEditRow";
 import { ProjectImportPanel } from "@/components/layout/admin/ProjectImportPanel";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
@@ -30,13 +30,18 @@ type CleanupResult = {
   deletedIds: string[];
 };
 
-export function AdminProjectsManager() {
-  const [projects, setProjects] = useState<AdminProject[]>([]);
+type AdminProjectsManagerProps = {
+  initialProjects: AdminProject[];
+};
+
+export function AdminProjectsManager({
+  initialProjects,
+}: AdminProjectsManagerProps) {
+  const [projects, setProjects] = useState<AdminProject[]>(initialProjects);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingProject, setEditingProject] = useState<AdminProject | null>(
     null,
   );
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [statusUpdatingId, setStatusUpdatingId] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -58,48 +63,6 @@ export function AdminProjectsManager() {
     }),
     [projects],
   );
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadProjects() {
-      try {
-        const response = await fetch("/api/admin/projects", {
-          cache: "no-store",
-        });
-        const data = (await response.json()) as {
-          projects?: AdminProject[];
-          message?: string;
-        };
-
-        if (!response.ok) {
-          throw new Error(data.message ?? "Unable to load projects");
-        }
-
-        if (active) {
-          setProjects(data.projects ?? []);
-        }
-      } catch (loadError) {
-        if (active) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Unable to load projects",
-          );
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadProjects();
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const toggleProject = (projectId: string) => {
     setSelectedIds((currentIds) =>
@@ -470,20 +433,18 @@ export function AdminProjectsManager() {
       <section className="grid gap-4 md:grid-cols-3">
         <article className="rounded-lg border border-border bg-surface p-5 shadow-sm">
           <p className="text-sm font-medium text-muted">Total projects</p>
-          <p className="mt-3 text-3xl font-semibold text-ink">
-            {loading ? "--" : counts.total}
-          </p>
+          <p className="mt-3 text-3xl font-semibold text-ink">{counts.total}</p>
         </article>
         <article className="rounded-lg border border-border bg-surface p-5 shadow-sm">
           <p className="text-sm font-medium text-muted">Pending</p>
           <p className="mt-3 text-3xl font-semibold text-ink">
-            {loading ? "--" : counts.pending}
+            {counts.pending}
           </p>
         </article>
         <article className="rounded-lg border border-border bg-surface p-5 shadow-sm">
           <p className="text-sm font-medium text-muted">Accepted</p>
           <p className="mt-3 text-3xl font-semibold text-ink">
-            {loading ? "--" : counts.accepted}
+            {counts.accepted}
           </p>
         </article>
       </section>
@@ -544,8 +505,6 @@ export function AdminProjectsManager() {
           data={projects}
           emptyMessage="No projects imported yet"
           getRowKey={(project) => project.id}
-          loading={loading}
-          loadingMessage="Loading projects"
           minWidth="1120px"
           renderExpandedRow={renderProjectEditForm}
         />
