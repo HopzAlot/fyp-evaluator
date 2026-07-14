@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
 import { ProjectEditRow } from "@/components/layout/admin/ProjectEditRow";
 import { ProjectImportPanel } from "@/components/layout/admin/ProjectImportPanel";
 import { Button } from "@/components/ui/Button";
@@ -10,6 +11,7 @@ import type {
   ProjectStatus,
   ProjectUpdateRequest,
 } from "@/types/project";
+import { filterProjects } from "@/utils/search/projectSearch";
 
 const statusLabels: Record<ProjectStatus, string> = {
   pending: "Pending",
@@ -38,6 +40,8 @@ type AdminProjectsManagerProps = {
 export function AdminProjectsManager({
   initialProjects,
 }: AdminProjectsManagerProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [projects, setProjects] = useState<AdminProject[]>(initialProjects);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -45,7 +49,6 @@ export function AdminProjectsManager({
     null,
   );
   const [saving, setSaving] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [statusUpdatingId, setStatusUpdatingId] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [cleaningOldDuplicates, setCleaningOldDuplicates] = useState(false);
@@ -57,28 +60,13 @@ export function AdminProjectsManager({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const filteredProjects = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-
-    if (!query) {
-      return projects;
-    }
-
-    return projects.filter((project) =>
-      [
-        project.title,
-        project.supervisor,
-        project.coSupervisor,
-        project.industrialPartner,
-        project.sdg,
-        statusLabels[project.status],
-        project.status,
-        ...project.students,
-      ]
-        .filter(Boolean)
-        .some((value) => value.toLowerCase().includes(query)),
-    );
-  }, [projects, searchTerm]);
+  const filteredProjects = useMemo(
+    () =>
+      filterProjects(projects, searchTerm, {
+        getStatusLabel: (project) => statusLabels[project.status],
+      }),
+    [projects, searchTerm],
+  );
   const allSelected =
     filteredProjects.length > 0 &&
     filteredProjects.every((project) => selectedIdSet.has(project.id));
@@ -91,43 +79,13 @@ export function AdminProjectsManager({
     [projects],
   );
 
-  const refreshProjects = async () => {
+  const refreshProjects = () => {
     setError("");
     setMessage("");
-    setRefreshing(true);
 
-    try {
-      const response = await fetch("/api/admin/projects", {
-        cache: "no-store",
-      });
-      const data = (await response.json()) as {
-        projects?: AdminProject[];
-        message?: string;
-      };
-
-      if (!response.ok || !data.projects) {
-        throw new Error(data.message ?? "Unable to refresh projects");
-      }
-
-      const refreshedIds = new Set(data.projects.map((project) => project.id));
-      setProjects(data.projects);
-      setSelectedIds((currentIds) =>
-        currentIds.filter((projectId) => refreshedIds.has(projectId)),
-      );
-      setEditingProject((currentProject) =>
-        currentProject && refreshedIds.has(currentProject.id)
-          ? currentProject
-          : null,
-      );
-    } catch (refreshError) {
-      setError(
-        refreshError instanceof Error
-          ? refreshError.message
-          : "Unable to refresh projects",
-      );
-    } finally {
-      setRefreshing(false);
-    }
+    startTransition(() => {
+      router.refresh();
+    });
   };
 
   const toggleProject = (projectId: string) => {
@@ -561,7 +519,7 @@ export function AdminProjectsManager({
           />
           <Button
             type="button"
-            loading={refreshing}
+            loading={isPending}
             loadingText="Refreshing"
             onClick={refreshProjects}
           >

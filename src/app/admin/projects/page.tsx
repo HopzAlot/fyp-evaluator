@@ -3,6 +3,9 @@ import { getAdminProjects } from "@/services/projectService";
 
 export default async function AdminProjectsPage() {
   const projects = await getAdminProjects();
+  const projectsKey = projects
+    .map((project) => `${project.id}:${project.status}`)
+    .join("|");
 
   return (
     <div className="space-y-6">
@@ -18,7 +21,7 @@ export default async function AdminProjectsPage() {
         </div>
       </section>
 
-      <AdminProjectsManager initialProjects={projects} />
+      <AdminProjectsManager key={projectsKey} initialProjects={projects} />
     </div>
   );
 }

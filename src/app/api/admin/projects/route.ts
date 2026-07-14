@@ -1,22 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  deleteProjectsByIds,
-  getAdminProjects,
-} from "@/services/projectService";
-
-export async function GET() {
-  try {
-    const projects = await getAdminProjects();
-
-    return NextResponse.json({ projects });
-  } catch (error) {
-    console.error("Admin projects list error", error);
-    return NextResponse.json(
-      { message: "Unable to load projects right now" },
-      { status: 500 },
-    );
-  }
-}
+import { deleteProjectsByIds } from "@/services/projectService";
 
 export async function DELETE(request: Request) {
   try {
