@@ -3,6 +3,7 @@ import { connectDatabase } from "@/lib/db/mongoose";
 import { ProjectModel, type ProjectDocument } from "@/models/Project";
 import type {
   AdminProject,
+  FacultyProject,
   ProjectBase,
   ProjectUpdateRequest,
 } from "@/types/project";
@@ -122,6 +123,18 @@ export function toAdminProject(project: ProjectDocument): AdminProject {
   };
 }
 
+export function toFacultyProject(project: ProjectDocument): FacultyProject {
+  return {
+    id: project._id.toString(),
+    title: project.title,
+    students: project.students,
+    supervisor: project.supervisor,
+    coSupervisor: project.coSupervisor,
+    industrialPartner: project.industrialPartner,
+    sdg: project.sdg,
+  };
+}
+
 export async function getAdminProjects() {
   await connectDatabase();
   await backfillMissingProjectKeys();
@@ -129,6 +142,26 @@ export async function getAdminProjects() {
   const projects = await ProjectModel.find().sort({ createdAt: -1 });
 
   return projects.map(toAdminProject);
+}
+
+export async function getFacultyProjects() {
+  await connectDatabase();
+
+  const projects = await ProjectModel.find().sort({ createdAt: -1 });
+
+  return projects.map(toFacultyProject);
+}
+
+export async function getFacultyProjectById(projectId: string) {
+  if (!isValidObjectId(projectId)) {
+    return null;
+  }
+
+  await connectDatabase();
+
+  const project = await ProjectModel.findById(projectId);
+
+  return project ? toFacultyProject(project) : null;
 }
 
 export async function createProjectsFromCsvRows(rows: ProjectBase[]) {

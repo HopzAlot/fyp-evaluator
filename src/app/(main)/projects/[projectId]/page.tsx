@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StudentEvaluationPanel } from "@/components/layout/projects/StudentEvaluationPanel";
-import {
-  evaluationCriteria,
-  evaluationPhases,
-  projects,
-} from "@/data/projects";
+import { evaluationCriteria, evaluationPhases } from "@/data/projects";
+import { getFacultyProjectById } from "@/services/projectService";
+
+const initialPhase = "Synopsis";
 
 type EvaluationPageProps = {
   params: Promise<{
@@ -15,11 +14,13 @@ type EvaluationPageProps = {
 
 export default async function EvaluationPage({ params }: EvaluationPageProps) {
   const { projectId } = await params;
-  const project = projects.find((item) => item.id === projectId);
+  const project = await getFacultyProjectById(projectId);
 
   if (!project) {
     notFound();
   }
+
+  const students = project.students;
 
   return (
     <div className="space-y-6">
@@ -40,17 +41,25 @@ export default async function EvaluationPage({ params }: EvaluationPageProps) {
           </p>
         </div>
         <div className="rounded-lg border border-border bg-surface p-4 text-sm shadow-sm">
-          <p className="font-semibold text-ink">{project.phase} evaluation</p>
-          <p className="mt-1 text-muted">{project.members.length} members</p>
+          <p className="font-semibold text-ink">{initialPhase} evaluation</p>
+          <p className="mt-1 text-muted">{students.length} members</p>
         </div>
       </section>
 
-      <StudentEvaluationPanel
-        students={project.members}
-        criteria={evaluationCriteria}
-        phases={evaluationPhases}
-        initialPhase={project.phase}
-      />
+      {students.length > 0 ? (
+        <StudentEvaluationPanel
+          students={students}
+          criteria={evaluationCriteria}
+          phases={evaluationPhases}
+          initialPhase={initialPhase}
+        />
+      ) : null}
+
+      {students.length === 0 ? (
+        <section className="rounded-lg border border-border bg-surface p-5 text-sm text-muted shadow-sm">
+          No students found for this project.
+        </section>
+      ) : null}
     </div>
   );
 }

@@ -1,7 +1,9 @@
 import { ProjectsTable } from "@/components/layout/projects/ProjectsTable";
-import { projects } from "@/data/projects";
+import { getFacultyProjects } from "@/services/projectService";
 
-export default function ProjectsPage() {
+export default async function ProjectsPage() {
+  const projects = await getFacultyProjects();
+
   return (
     <div className="space-y-6">
       <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">

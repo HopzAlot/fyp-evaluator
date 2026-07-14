@@ -1,18 +1,13 @@
 import Link from "next/link";
-import type { Project, ProjectStatus } from "@/data/projects";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
+import type { FacultyProject } from "@/types/project";
 
 type ProjectsTableProps = {
-  projects: Project[];
+  projects: FacultyProject[];
+  loading?: boolean;
 };
 
-const statusStyles: Record<ProjectStatus, string> = {
-  Ready: "bg-accent-soft text-accent",
-  "In Review": "bg-surface-muted text-ink",
-  Submitted: "bg-primary/10 text-primary",
-};
-
-const columns: DataTableColumn<Project>[] = [
+const columns: DataTableColumn<FacultyProject>[] = [
   {
     key: "project",
     header: "Project",
@@ -20,7 +15,7 @@ const columns: DataTableColumn<Project>[] = [
       <>
         <p className="font-semibold text-ink">{project.title}</p>
         <p className="mt-1 text-sm text-muted">
-          {project.department} - {project.supervisor}
+          Supervisor: {project.supervisor}
         </p>
       </>
     ),
@@ -30,41 +25,33 @@ const columns: DataTableColumn<Project>[] = [
     header: "Students",
     render: (project) => (
       <span className="text-muted">
-        {project.members.map((student) => student.name).join(", ")}
+        {project.students.length ? project.students.join(", ") : "Not provided"}
       </span>
     ),
   },
   {
-    key: "phase",
-    header: "Phase",
-    render: (project) => <span className="text-ink">{project.phase}</span>,
-  },
-  {
-    key: "progress",
-    header: "Progress",
+    key: "coSupervisor",
+    header: "Co Supervisor",
     render: (project) => (
-      <div className="flex items-center gap-3">
-        <div className="h-2 w-28 overflow-hidden rounded-full bg-surface-muted">
-          <div
-            className="h-full rounded-full bg-accent"
-            style={{ width: `${project.progress}%` }}
-          />
-        </div>
-        <span className="font-medium text-ink">{project.progress}%</span>
-      </div>
+      <span className="text-muted">
+        {project.coSupervisor || "Not provided"}
+      </span>
     ),
   },
   {
-    key: "status",
-    header: "Status",
+    key: "partner",
+    header: "Industrial Partner",
     render: (project) => (
-      <span
-        className={`inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ${
-          statusStyles[project.status]
-        }`}
-      >
-        {project.status}
+      <span className="text-muted">
+        {project.industrialPartner || "Not provided"}
       </span>
+    ),
+  },
+  {
+    key: "sdg",
+    header: "SDG",
+    render: (project) => (
+      <span className="text-muted">{project.sdg || "Not provided"}</span>
     ),
   },
   {
@@ -82,13 +69,17 @@ const columns: DataTableColumn<Project>[] = [
   },
 ];
 
-export function ProjectsTable({ projects }: ProjectsTableProps) {
+export function ProjectsTable({ projects, loading = false }: ProjectsTableProps) {
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
       <DataTable
         columns={columns}
         data={projects}
+        emptyMessage="No projects assigned yet"
         getRowKey={(project) => project.id}
+        loading={loading}
+        loadingMessage="Loading projects"
+        minWidth="1040px"
       />
     </section>
   );

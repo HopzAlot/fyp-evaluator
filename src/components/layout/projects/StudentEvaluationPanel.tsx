@@ -2,10 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { EvaluationPhaseTabs } from "@/components/layout/projects/EvaluationPhaseTabs";
-import type { Student } from "@/data/projects";
 
 type StudentEvaluationPanelProps = {
-  students: Student[];
+  students: string[];
   criteria: string[];
   phases: string[];
   initialPhase: string;
@@ -31,10 +30,10 @@ function createEmptyEvaluation(): PhaseEvaluation {
 
 function getEvaluation(
   evaluations: EvaluationState,
-  studentId: string,
+  studentName: string,
   phase: string,
 ) {
-  return evaluations[studentId]?.[phase] ?? createEmptyEvaluation();
+  return evaluations[studentName]?.[phase] ?? createEmptyEvaluation();
 }
 
 function getCompletion(evaluation: PhaseEvaluation, criteriaCount: number) {
@@ -55,7 +54,7 @@ export function StudentEvaluationPanel({
   initialPhase,
 }: StudentEvaluationPanelProps) {
   const [selectedPhase, setSelectedPhase] = useState(initialPhase);
-  const [selectedStudentId, setSelectedStudentId] = useState(students[0]?.id);
+  const [selectedStudentName, setSelectedStudentName] = useState(students[0] ?? "");
   const [evaluations, setEvaluations] = useState<EvaluationState>({});
   const [attemptedSubmits, setAttemptedSubmits] = useState<
     Record<string, boolean>
@@ -64,12 +63,9 @@ export function StudentEvaluationPanel({
     Record<string, boolean>
   >({});
 
-  const selectedStudent =
-    students.find((student) => student.id === selectedStudentId) ?? students[0];
-
   const selectedEvaluation = getEvaluation(
     evaluations,
-    selectedStudent.id,
+    selectedStudentName,
     selectedPhase,
   );
 
@@ -77,28 +73,28 @@ export function StudentEvaluationPanel({
     () =>
       phases.reduce<Record<string, number>>((progress, phase) => {
         progress[phase] = getCompletion(
-          getEvaluation(evaluations, selectedStudent.id, phase),
+          getEvaluation(evaluations, selectedStudentName, phase),
           criteria.length,
         );
 
         return progress;
       }, {}),
-    [criteria.length, evaluations, phases, selectedStudent.id],
+    [criteria.length, evaluations, phases, selectedStudentName],
   );
 
   const selectedStudentProgress = phaseProgress[selectedPhase] ?? 0;
-  const evaluationKey = `${selectedStudent.id}-${selectedPhase}`;
+  const evaluationKey = `${selectedStudentName}-${selectedPhase}`;
   const showErrors = attemptedSubmits[evaluationKey] ?? false;
   const saved = savedEvaluations[evaluationKey] ?? false;
 
-  function getPhaseProgressForStudent(studentId: string, phase: string) {
+  function getPhaseProgressForStudent(studentName: string, phase: string) {
     return getCompletion(
-      getEvaluation(evaluations, studentId, phase),
+      getEvaluation(evaluations, studentName, phase),
       criteria.length,
     );
   }
 
-  function isPhaseEnabledForStudent(studentId: string, phase: string) {
+  function isPhaseEnabledForStudent(studentName: string, phase: string) {
     const phaseIndex = phases.indexOf(phase);
 
     if (phaseIndex <= 0) {
@@ -109,12 +105,12 @@ export function StudentEvaluationPanel({
       .slice(0, phaseIndex)
       .every(
         (previousPhase) =>
-          getPhaseProgressForStudent(studentId, previousPhase) === 100,
+          getPhaseProgressForStudent(studentName, previousPhase) === 100,
       );
   }
 
   function isPhaseEnabled(phase: string) {
-    return isPhaseEnabledForStudent(selectedStudent.id, phase);
+    return isPhaseEnabledForStudent(selectedStudentName, phase);
   }
 
   function updateEvaluation(updates: Partial<PhaseEvaluation>) {
@@ -126,14 +122,14 @@ export function StudentEvaluationPanel({
     setEvaluations((current) => {
       const currentEvaluation = getEvaluation(
         current,
-        selectedStudent.id,
+        selectedStudentName,
         selectedPhase,
       );
 
       return {
         ...current,
-        [selectedStudent.id]: {
-          ...current[selectedStudent.id],
+        [selectedStudentName]: {
+          ...current[selectedStudentName],
           [selectedPhase]: {
             ...currentEvaluation,
             ...updates,
@@ -158,12 +154,12 @@ export function StudentEvaluationPanel({
     }
   }
 
-  function handleStudentChange(studentId: string) {
-    setSelectedStudentId(studentId);
+  function handleStudentChange(studentName: string) {
+    setSelectedStudentName(studentName);
 
-    if (!isPhaseEnabledForStudent(studentId, selectedPhase)) {
+    if (!isPhaseEnabledForStudent(studentName, selectedPhase)) {
       const firstOpenPhase =
-        phases.find((phase) => isPhaseEnabledForStudent(studentId, phase)) ??
+        phases.find((phase) => isPhaseEnabledForStudent(studentName, phase)) ??
         phases[0];
 
       setSelectedPhase(firstOpenPhase);
@@ -186,8 +182,7 @@ export function StudentEvaluationPanel({
     }));
 
     console.log("Student evaluation saved", {
-      studentId: selectedStudent.id,
-      studentName: selectedStudent.name,
+      studentName: selectedStudentName,
       phase: selectedPhase,
       evaluation: selectedEvaluation,
     });
@@ -213,10 +208,10 @@ export function StudentEvaluationPanel({
             </p>
             <div className="mt-4 space-y-3">
               {students.map((student) => {
-                const active = student.id === selectedStudent.id;
+                const active = student === selectedStudentName;
                 const studentEvaluation = getEvaluation(
                   evaluations,
-                  student.id,
+                  student,
                   selectedPhase,
                 );
                 const progress = getCompletion(
@@ -226,9 +221,9 @@ export function StudentEvaluationPanel({
 
                 return (
                   <button
-                    key={student.id}
+                    key={student}
                     type="button"
-                    onClick={() => handleStudentChange(student.id)}
+                    onClick={() => handleStudentChange(student)}
                     className={`w-full rounded-md border px-3 py-3 text-left transition ${
                       active
                         ? "border-accent bg-accent-soft"
@@ -236,10 +231,10 @@ export function StudentEvaluationPanel({
                     }`}
                   >
                     <span className="block text-sm font-semibold text-ink">
-                      {student.name}
+                      {student}
                     </span>
                     <span className="mt-1 block text-xs text-muted">
-                      {student.rollNo} - {progress}% done
+                      {progress}% done
                     </span>
                   </button>
                 );
@@ -252,9 +247,9 @@ export function StudentEvaluationPanel({
               Selected student
             </h2>
             <p className="mt-3 text-sm font-semibold text-ink">
-              {selectedStudent.name}
+              {selectedStudentName}
             </p>
-            <p className="mt-1 text-sm text-muted">{selectedStudent.rollNo}</p>
+
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface-muted">
               <div
                 className="h-full rounded-full bg-accent"
@@ -273,7 +268,7 @@ export function StudentEvaluationPanel({
 
             return (
               <fieldset
-                key={`${selectedPhase}-${selectedStudent.id}-${criterion}`}
+                key={`${selectedPhase}-${selectedStudentName}-${criterion}`}
                 className={`rounded-lg border bg-surface p-5 shadow-sm ${
                   missingRating ? "border-danger" : "border-border"
                 }`}
@@ -290,7 +285,7 @@ export function StudentEvaluationPanel({
                     <label key={rating} className="cursor-pointer">
                       <input
                         type="radio"
-                        name={`${selectedPhase}-${selectedStudent.id}-criterion-${index}`}
+                        name={`${selectedPhase}-${selectedStudentName}-criterion-${index}`}
                         value={rating}
                         checked={selectedEvaluation.ratings[index] === rating}
                         onChange={() => updateRating(index, rating)}
@@ -316,11 +311,11 @@ export function StudentEvaluationPanel({
               htmlFor="remarks"
               className="text-base font-semibold text-ink"
             >
-              Remarks for {selectedStudent.name}
+              Remarks for {selectedStudentName}
             </label>
             <textarea
               id="remarks"
-              name={`${selectedPhase}-${selectedStudent.id}-remarks`}
+              name={`${selectedPhase}-${selectedStudentName}-remarks`}
               rows={5}
               value={selectedEvaluation.remarks}
               onChange={(event) =>
@@ -345,7 +340,7 @@ export function StudentEvaluationPanel({
             </label>
             <select
               id="recommendation"
-              name={`${selectedPhase}-${selectedStudent.id}-recommendation`}
+              name={`${selectedPhase}-${selectedStudentName}-recommendation`}
               value={selectedEvaluation.recommendation}
               onChange={(event) =>
                 updateEvaluation({ recommendation: event.target.value })
