@@ -2,7 +2,7 @@
 
 import { useRef, useState, type DragEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
-import type { AdminProject, ProjectCsvRow } from "@/types/project";
+import type { AdminProject, ProjectBase } from "@/types/project";
 import { parseProjectCsv } from "@/utils/csv/projectCsv";
 
 type ProjectImportPanelProps = {
@@ -22,7 +22,7 @@ export function ProjectImportPanel({
 }: ProjectImportPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewFile, setPreviewFile] = useState<File | null>(null);
-  const [previewRows, setPreviewRows] = useState<ProjectCsvRow[]>([]);
+  const [previewRows, setPreviewRows] = useState<ProjectBase[]>([]);
   const [dropzoneOpen, setDropzoneOpen] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);

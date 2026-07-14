@@ -6,18 +6,18 @@ import { ProjectImportPanel } from "@/components/layout/admin/ProjectImportPanel
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import type {
   AdminProject,
-  AdminProjectStatus,
+  ProjectStatus,
   ProjectUpdateRequest,
 } from "@/types/project";
 
-const statusLabels: Record<AdminProjectStatus, string> = {
+const statusLabels: Record<ProjectStatus, string> = {
   pending: "Pending",
   "under-review": "Under Review",
   accepted: "Accepted",
   rejected: "Rejected",
 };
 
-const statusStyles: Record<AdminProjectStatus, string> = {
+const statusStyles: Record<ProjectStatus, string> = {
   pending: "bg-surface-muted text-ink",
   "under-review": "bg-primary/10 text-primary",
   accepted: "bg-accent-soft text-accent",
@@ -214,7 +214,7 @@ export function AdminProjectsManager() {
 
   const updateProjectStatus = async (
     project: AdminProject,
-    status: AdminProjectStatus,
+    status: ProjectStatus,
   ) => {
     if (project.status === status) {
       return;
@@ -351,7 +351,7 @@ export function AdminProjectsManager() {
           onChange={(event) =>
             updateProjectStatus(
               project,
-              event.target.value as AdminProjectStatus,
+              event.target.value as ProjectStatus,
             )
           }
           className={`h-9 rounded-md border border-border px-2.5 text-xs font-semibold outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-70 ${

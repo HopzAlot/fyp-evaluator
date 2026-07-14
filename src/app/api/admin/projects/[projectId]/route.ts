@@ -3,10 +3,10 @@ import {
   deleteProjectById,
   updateProjectById,
 } from "@/services/projectService";
-import type { AdminProjectStatus, ProjectUpdateRequest } from "@/types/project";
+import type { ProjectStatus, ProjectUpdateRequest } from "@/types/project";
 import { normalizeText } from "@/utils/normalization/facultyNormalization";
 
-const statuses: AdminProjectStatus[] = [
+const statuses: ProjectStatus[] = [
   "pending",
   "under-review",
   "accepted",

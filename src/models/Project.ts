@@ -5,7 +5,7 @@ import {
   type HydratedDocument,
   type Model,
 } from "mongoose";
-import type { AdminProjectStatus } from "@/types/project";
+import type { ProjectStatus } from "@/types/project";
 
 type Project = {
   title: string;
@@ -14,7 +14,7 @@ type Project = {
   coSupervisor: string;
   industrialPartner: string;
   sdg: string;
-  status: AdminProjectStatus;
+  status: ProjectStatus;
   createdAt: Date;
   updatedAt: Date;
 };

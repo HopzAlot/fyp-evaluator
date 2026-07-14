@@ -1,4 +1,4 @@
-import type { ProjectCsvRow } from "@/types/project";
+import type { ProjectBase } from "@/types/project";
 import { normalizeText } from "@/utils/normalization/facultyNormalization";
 
 const expectedHeaders = [
@@ -59,7 +59,7 @@ function parseCsv(text: string) {
     .map(parseCsvLine);
 }
 
-export function parseProjectCsv(text: string): ProjectCsvRow[] {
+export function parseProjectCsv(text: string): ProjectBase[] {
   const rows = parseCsv(text);
 
   if (rows.length < 2) {

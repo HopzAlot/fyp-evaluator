@@ -7,12 +7,12 @@ import { FormTextField } from "@/components/fields/FormTextField";
 import { Button } from "@/components/ui/Button";
 import type {
   AdminProject,
-  AdminProjectStatus,
+  ProjectStatus,
   ProjectUpdateRequest,
 } from "@/types/project";
 import { noHtmlValidation } from "@/utils/validation/formValidation";
 
-const statusLabels: Record<AdminProjectStatus, string> = {
+const statusLabels: Record<ProjectStatus, string> = {
   pending: "Pending",
   "under-review": "Under Review",
   accepted: "Accepted",

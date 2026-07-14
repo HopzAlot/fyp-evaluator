@@ -3,7 +3,7 @@ import { connectDatabase } from "@/lib/db/mongoose";
 import { ProjectModel, type ProjectDocument } from "@/models/Project";
 import type {
   AdminProject,
-  ProjectCsvRow,
+  ProjectBase,
   ProjectUpdateRequest,
 } from "@/types/project";
 
@@ -27,7 +27,7 @@ export async function getAdminProjects() {
   return projects.map(toAdminProject);
 }
 
-export async function createProjectsFromCsvRows(rows: ProjectCsvRow[]) {
+export async function createProjectsFromCsvRows(rows: ProjectBase[]) {
   await connectDatabase();
 
   const projects = await ProjectModel.insertMany(
