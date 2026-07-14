@@ -11,7 +11,9 @@ function normalizeProjectKeyPart(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-export function buildProjectKey(project: Pick<ProjectBase, "title" | "students" | "supervisor">) {
+export function buildProjectKey(
+  project: Pick<ProjectBase, "title" | "students" | "supervisor">,
+) {
   const students = project.students
     .map(normalizeProjectKeyPart)
     .filter(Boolean)
@@ -23,6 +25,35 @@ export function buildProjectKey(project: Pick<ProjectBase, "title" | "students" 
     normalizeProjectKeyPart(project.supervisor),
     students,
   ].join("::");
+}
+
+async function backfillMissingProjectKeys() {
+  const projectsWithKeys = await ProjectModel.find({
+    projectKey: { $exists: true, $ne: "" },
+  }).select("projectKey");
+  const usedKeys = new Set(
+    projectsWithKeys.map((project) => project.projectKey),
+  );
+  const projects = await ProjectModel.find({
+    $or: [{ projectKey: { $exists: false } }, { projectKey: "" }],
+  }).select("title students supervisor");
+
+  await Promise.all(
+    projects.map((project) => {
+      const projectKey = buildProjectKey(project);
+
+      if (usedKeys.has(projectKey)) {
+        return Promise.resolve();
+      }
+
+      usedKeys.add(projectKey);
+
+      return ProjectModel.updateOne(
+        { _id: project._id },
+        { $set: { projectKey } },
+      );
+    }),
+  );
 }
 
 export function toAdminProject(project: ProjectDocument): AdminProject {
@@ -40,6 +71,8 @@ export function toAdminProject(project: ProjectDocument): AdminProject {
 
 export async function getAdminProjects() {
   await connectDatabase();
+  await backfillMissingProjectKeys();
+
   const projects = await ProjectModel.find().sort({ createdAt: -1 });
 
   return projects.map(toAdminProject);
@@ -47,6 +80,7 @@ export async function getAdminProjects() {
 
 export async function createProjectsFromCsvRows(rows: ProjectBase[]) {
   await connectDatabase();
+  await backfillMissingProjectKeys();
 
   const projectRows = rows.map((row) => ({
     ...row,
@@ -109,6 +143,8 @@ export async function updateProjectById(
   }
 
   await connectDatabase();
+  await backfillMissingProjectKeys();
+
   const projectKey = buildProjectKey(values);
   const existingProjects = await ProjectModel.find({
     _id: { $ne: projectId },
