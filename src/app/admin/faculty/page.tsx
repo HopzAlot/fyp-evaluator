@@ -1,6 +1,9 @@
 import { AdminFacultyManager } from "@/components/layout/admin/AdminFacultyManager";
+import { getAdminFacultyUsers } from "@/services/userService";
 
-export default function AdminFacultyPage() {
+export default async function AdminFacultyPage() {
+  const faculty = await getAdminFacultyUsers();
+
   return (
     <div className="space-y-6">
       <section>
@@ -12,7 +15,7 @@ export default function AdminFacultyPage() {
         </p>
       </section>
 
-      <AdminFacultyManager />
+      <AdminFacultyManager initialFaculty={faculty} />
     </div>
   );
 }

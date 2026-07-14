@@ -13,6 +13,18 @@ export type AuthUser = {
   gender?: string;
 };
 
+export type AdminFacultyUser = Pick<
+  AuthUser,
+  | "id"
+  | "email"
+  | "status"
+  | "fullName"
+  | "contactNumber"
+  | "department"
+  | "designation"
+  | "gender"
+>;
+
 export type LoginRequest = {
   email: string;
   password: string;

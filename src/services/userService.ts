@@ -2,8 +2,16 @@ import bcrypt from "bcryptjs";
 import { isValidObjectId, type Types } from "mongoose";
 import { connectDatabase } from "@/lib/db/mongoose";
 import { UserModel, type UserDocument } from "@/models/User";
-import type { AuthUser, UserRole, UserStatus } from "@/types/auth";
-import type { FacultyDocument } from "./facultyService";
+import type {
+  AdminFacultyUser,
+  AuthUser,
+  UserRole,
+  UserStatus,
+} from "@/types/auth";
+import {
+  getFacultyProfilesByUserIds,
+  type FacultyDocument,
+} from "./facultyService";
 
 type CreateUserAccountValues = {
   email: string;
@@ -59,6 +67,31 @@ export async function getUserById(userId: string) {
 export async function getFacultyUsers() {
   await connectDatabase();
   return UserModel.find({ role: "faculty" }).sort({ createdAt: -1 });
+}
+
+export async function getAdminFacultyUsers(): Promise<AdminFacultyUser[]> {
+  const users = await getFacultyUsers();
+  const profiles = await getFacultyProfilesByUserIds(
+    users.map((user) => user._id),
+  );
+  const profileByUserId = new Map(
+    profiles.map((profile) => [profile.userId.toString(), profile]),
+  );
+
+  return users.map((user) => {
+    const profile = profileByUserId.get(user._id.toString());
+
+    return {
+      id: user._id.toString(),
+      email: user.email,
+      status: user.status,
+      fullName: profile?.fullName,
+      contactNumber: profile?.contactNumber,
+      department: profile?.department,
+      designation: profile?.designation,
+      gender: profile?.gender,
+    };
+  });
 }
 
 export async function updateUserStatus(userId: string, status: UserStatus) {

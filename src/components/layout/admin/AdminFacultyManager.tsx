@@ -1,18 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
-import type { UserStatus } from "@/types/auth";
-
-type FacultyUser = {
-  id: string;
-  email: string;
-  status: UserStatus;
-  fullName?: string;
-  contactNumber?: string;
-  department?: string;
-  designation?: string;
-};
+import type { AdminFacultyUser, UserStatus } from "@/types/auth";
 
 const statLabels = [
   { key: "total", label: "Total faculty" },
@@ -20,9 +10,14 @@ const statLabels = [
   { key: "inactive", label: "Inactive" },
 ] as const;
 
-export function AdminFacultyManager() {
-  const [faculty, setFaculty] = useState<FacultyUser[]>([]);
-  const [loading, setLoading] = useState(true);
+type AdminFacultyManagerProps = {
+  initialFaculty: AdminFacultyUser[];
+};
+
+export function AdminFacultyManager({
+  initialFaculty,
+}: AdminFacultyManagerProps) {
+  const [faculty, setFaculty] = useState<AdminFacultyUser[]>(initialFaculty);
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState("");
   const counts = useMemo(
@@ -33,48 +28,6 @@ export function AdminFacultyManager() {
     }),
     [faculty],
   );
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadFaculty() {
-      try {
-        const response = await fetch("/api/admin/faculty", {
-          cache: "no-store",
-        });
-        const data = (await response.json()) as {
-          faculty?: FacultyUser[];
-          message?: string;
-        };
-
-        if (!response.ok) {
-          throw new Error(data.message ?? "Unable to load faculty users");
-        }
-
-        if (active) {
-          setFaculty(data.faculty ?? []);
-        }
-      } catch (loadError) {
-        if (active) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Unable to load faculty users",
-          );
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadFaculty();
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const updateStatus = async (userId: string, status: UserStatus) => {
     setError("");
@@ -103,7 +56,7 @@ export function AdminFacultyManager() {
       ),
     );
   };
-  const columns: DataTableColumn<FacultyUser>[] = [
+  const columns: DataTableColumn<AdminFacultyUser>[] = [
     {
       key: "name",
       header: "Name",
@@ -163,7 +116,7 @@ export function AdminFacultyManager() {
           >
             <p className="text-sm font-medium text-muted">{stat.label}</p>
             <p className="mt-3 text-3xl font-semibold text-ink">
-              {loading ? "--" : counts[stat.key]}
+              {counts[stat.key]}
             </p>
           </article>
         ))}
@@ -184,8 +137,6 @@ export function AdminFacultyManager() {
           data={faculty}
           emptyMessage="No faculty users found"
           getRowKey={(item) => item.id}
-          loading={loading}
-          loadingMessage="Loading faculty users"
         />
       </section>
     </>
