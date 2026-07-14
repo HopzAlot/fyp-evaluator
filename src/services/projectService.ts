@@ -164,6 +164,21 @@ export async function getFacultyProjectById(projectId: string) {
   return project ? toFacultyProject(project) : null;
 }
 
+export async function getFacultyDashboardSummary() {
+  const projects = await getFacultyProjects();
+
+  return {
+    totalProjects: projects.length,
+    totalStudents: projects.reduce(
+      (count, project) => count + project.students.length,
+      0,
+    ),
+    industryProjects: projects.filter((project) => project.industrialPartner)
+      .length,
+    recentProjects: projects.slice(0, 3),
+  };
+}
+
 export async function createProjectsFromCsvRows(rows: ProjectBase[]) {
   await connectDatabase();
   await backfillMissingProjectKeys();
