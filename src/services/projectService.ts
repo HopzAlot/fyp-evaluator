@@ -56,6 +56,59 @@ async function backfillMissingProjectKeys() {
   );
 }
 
+export async function cleanupOldDuplicateProjects() {
+  await connectDatabase();
+
+  const keyedProjects = await ProjectModel.find({
+    projectKey: { $exists: true, $ne: "" },
+  }).select("projectKey");
+  const usedKeys = new Set(
+    keyedProjects.map((project) => project.projectKey),
+  );
+  const oldProjects = await ProjectModel.find({
+    $or: [{ projectKey: { $exists: false } }, { projectKey: "" }],
+  })
+    .select("title students supervisor")
+    .sort({ createdAt: 1 });
+  const duplicateIds: string[] = [];
+  let backfilledCount = 0;
+
+  await Promise.all(
+    oldProjects.map((project) => {
+      const projectKey = buildProjectKey(project);
+
+      if (usedKeys.has(projectKey)) {
+        duplicateIds.push(project._id.toString());
+        return Promise.resolve();
+      }
+
+      usedKeys.add(projectKey);
+      backfilledCount += 1;
+
+      return ProjectModel.updateOne(
+        { _id: project._id },
+        { $set: { projectKey } },
+      );
+    }),
+  );
+
+  if (duplicateIds.length === 0) {
+    return {
+      backfilledCount,
+      deletedCount: 0,
+      deletedIds: [],
+    };
+  }
+
+  const result = await ProjectModel.deleteMany({ _id: { $in: duplicateIds } });
+
+  return {
+    backfilledCount,
+    deletedCount: result.deletedCount,
+    deletedIds: duplicateIds,
+  };
+}
+
 export function toAdminProject(project: ProjectDocument): AdminProject {
   return {
     id: project._id.toString(),

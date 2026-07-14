@@ -34,6 +34,7 @@ export function AdminProjectsManager() {
   const [saving, setSaving] = useState(false);
   const [statusUpdatingId, setStatusUpdatingId] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [cleaningOldDuplicates, setCleaningOldDuplicates] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
@@ -160,6 +161,50 @@ export function AdminProjectsManager() {
     );
     setSelectedIds([]);
     setMessage(`${data.deletedCount ?? 0} project(s) deleted successfully.`);
+  };
+
+  const cleanupOldDuplicates = async () => {
+    const confirmed = window.confirm(
+      "Delete old duplicate project records that do not have a project key?",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setError("");
+    setMessage("");
+    setCleaningOldDuplicates(true);
+
+    const response = await fetch("/api/admin/projects/cleanup-old-duplicates", {
+      method: "POST",
+    });
+    const data = (await response.json()) as {
+      backfilledCount?: number;
+      deletedCount?: number;
+      deletedIds?: string[];
+      message?: string;
+    };
+
+    setCleaningOldDuplicates(false);
+
+    if (!response.ok) {
+      setError(data.message ?? "Unable to clean old duplicate projects");
+      return;
+    }
+
+    const deletedIds = new Set(data.deletedIds ?? []);
+    setProjects((currentProjects) =>
+      currentProjects.filter((project) => !deletedIds.has(project.id)),
+    );
+    setSelectedIds((currentIds) =>
+      currentIds.filter((projectId) => !deletedIds.has(projectId)),
+    );
+    setMessage(
+      `${data.deletedCount ?? 0} old duplicate project(s) deleted. ${
+        data.backfilledCount ?? 0
+      } old project key(s) backfilled.`,
+    );
   };
 
   const startEdit = (project: AdminProject) => {
@@ -456,6 +501,14 @@ export function AdminProjectsManager() {
             className="h-11 rounded-md border border-border px-4 text-sm font-semibold text-danger transition hover:bg-danger/10 disabled:cursor-not-allowed disabled:text-muted"
           >
             Delete selected
+          </button>
+          <button
+            type="button"
+            onClick={cleanupOldDuplicates}
+            disabled={cleaningOldDuplicates}
+            className="h-11 rounded-md border border-border px-4 text-sm font-semibold text-ink transition hover:bg-surface-muted disabled:cursor-not-allowed disabled:text-muted"
+          >
+            {cleaningOldDuplicates ? "Cleaning" : "Clean old duplicates"}
           </button>
         </ProjectImportPanel>
 
