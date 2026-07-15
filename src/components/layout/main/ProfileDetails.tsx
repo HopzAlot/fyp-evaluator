@@ -7,13 +7,19 @@ const emptyValue = "Not provided";
 
 export function ProfileDetails() {
   const { loading, user } = useAuth();
-  const profileFields = [
-    { label: "Full name", value: user?.fullName },
-    { label: "Contact number", value: user?.contactNumber },
-    { label: "Department", value: user?.department },
-    { label: "Designation", value: user?.designation },
-    { label: "Gender", value: formatGender(user?.gender) },
-  ];
+  const isAdmin = user?.role === "admin";
+  const profileFields = isAdmin
+    ? [
+        { label: "Full name", value: user?.fullName },
+        { label: "Gender", value: formatGender(user?.gender) },
+      ]
+    : [
+        { label: "Full name", value: user?.fullName },
+        { label: "Contact number", value: user?.contactNumber },
+        { label: "Department", value: user?.department },
+        { label: "Designation", value: user?.designation },
+        { label: "Gender", value: formatGender(user?.gender) },
+      ];
   const initials = loading
     ? "--"
     : (user?.fullName ?? user?.email ?? "U")
