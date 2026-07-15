@@ -30,7 +30,7 @@ function getBreadcrumbs(pathname: string) {
       segments[index - 1] === "projects" && index > 0
         ? "Evaluation"
         : segments[index - 1] === "admin" && segment === "faculty"
-          ? "Faculty"
+          ? "Manage Users"
         : formatSegment(segment),
     href: `/${segments.slice(0, index + 1).join("/")}`,
     current: index === segments.length - 1,

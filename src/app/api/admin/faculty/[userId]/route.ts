@@ -11,14 +11,12 @@ import {
 import type { FacultyProfileRequest } from "@/types/faculty";
 import { validateFacultyProfilePayload } from "@/utils/validation/authValidation";
 
-export async function PATCH(request: Request) {
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ userId: string }> },
+) {
   try {
-    const userId = request.headers.get("x-auth-user-id");
-
-    if (!userId) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
-
+    const { userId } = await params;
     const values = (await request.json()) as FacultyProfileRequest;
     const error = validateFacultyProfilePayload(values);
 
@@ -28,12 +26,15 @@ export async function PATCH(request: Request) {
 
     const userAccount = await getUserById(userId);
 
-    if (!userAccount) {
-      return NextResponse.json({ message: "User not found" }, { status: 404 });
+    if (!userAccount || userAccount.role !== "faculty") {
+      return NextResponse.json(
+        { message: "Faculty user not found" },
+        { status: 404 },
+      );
     }
 
     const updatedUser =
-      (await updateUserProfileFields(userAccount._id.toString(), {
+      (await updateUserProfileFields(userId, {
         fullName: values.fullName,
         gender: values.gender,
       })) ?? userAccount;
@@ -50,9 +51,9 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ user: toAuthUser(updatedUser, faculty) });
   } catch (error) {
-    console.error("Faculty profile update error", error);
+    console.error("Admin faculty update error", error);
     return NextResponse.json(
-      { message: "Unable to update faculty profile right now" },
+      { message: "Unable to update faculty information right now" },
       { status: 500 },
     );
   }

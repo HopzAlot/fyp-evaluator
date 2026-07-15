@@ -98,6 +98,28 @@ export async function getAdminFacultyUsers(): Promise<AdminFacultyUser[]> {
   });
 }
 
+export async function getAdminFacultyUserById(userId: string) {
+  const user = await getUserById(userId);
+
+  if (!user || user.role !== "faculty") {
+    return null;
+  }
+
+  const profile = await getFacultyProfilesByUserIds([user._id]);
+  const faculty = profile[0];
+
+  return {
+    id: user._id.toString(),
+    email: user.email,
+    status: user.status,
+    fullName: faculty?.fullName ?? user.fullName,
+    contactNumber: faculty?.contactNumber,
+    department: faculty?.department,
+    designation: faculty?.designation,
+    gender: faculty?.gender ?? user.gender,
+  } satisfies AdminFacultyUser;
+}
+
 export async function updateUserStatus(userId: string, status: UserStatus) {
   if (!isValidObjectId(userId)) {
     return null;
@@ -107,6 +129,25 @@ export async function updateUserStatus(userId: string, status: UserStatus) {
   return UserModel.findOneAndUpdate(
     { _id: userId, role: "faculty" },
     { status },
+    { new: true },
+  );
+}
+
+export async function updateUserProfileFields(
+  userId: string,
+  values: Pick<AuthUser, "fullName" | "gender">,
+) {
+  if (!isValidObjectId(userId)) {
+    return null;
+  }
+
+  await connectDatabase();
+  return UserModel.findByIdAndUpdate(
+    userId,
+    {
+      fullName: values.fullName ? normalizeText(values.fullName) : "",
+      gender: values.gender ? normalizeGender(values.gender) : "",
+    },
     { new: true },
   );
 }

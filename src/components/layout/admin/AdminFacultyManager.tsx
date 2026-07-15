@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
@@ -25,6 +26,7 @@ export function AdminFacultyManager({
   const [faculty, setFaculty] = useState<AdminFacultyUser[]>(initialFaculty);
   const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [updatingId, setUpdatingId] = useState("");
   const counts = useMemo(
     () => ({
@@ -41,11 +43,13 @@ export function AdminFacultyManager({
 
   const refreshFaculty = () => {
     setError("");
+    setMessage("");
     refreshRoute();
   };
 
   const updateStatus = async (userId: string, status: UserStatus) => {
     setError("");
+    setMessage("");
     setUpdatingId(userId);
 
     const response = await fetch(`/api/admin/faculty/${userId}/status`, {
@@ -71,6 +75,7 @@ export function AdminFacultyManager({
       ),
     );
   };
+
   const columns: DataTableColumn<AdminFacultyUser>[] = [
     {
       key: "name",
@@ -119,6 +124,19 @@ export function AdminFacultyManager({
         </select>
       ),
     },
+    {
+      key: "action",
+      header: "Action",
+      className: "text-right",
+      render: (item) => (
+        <Link
+          href={`/admin/faculty/${item.id}`}
+          className="h-9 rounded-md border border-border px-3 text-sm font-semibold text-ink transition hover:bg-surface-muted"
+        >
+          Edit
+        </Link>
+      ),
+    },
   ];
 
   return (
@@ -142,10 +160,15 @@ export function AdminFacultyManager({
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-base font-semibold text-ink">
-                Registered faculty
+                Registered users
               </h2>
               {error ? (
                 <p className="mt-2 text-sm font-medium text-danger">{error}</p>
+              ) : null}
+              {message ? (
+                <p className="mt-2 text-sm font-medium text-accent">
+                  {message}
+                </p>
               ) : null}
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

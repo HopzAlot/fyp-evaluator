@@ -15,7 +15,7 @@ const facultyNavItems = [
 const adminNavItems = [
   { label: "Dashboard", href: "/admin" },
   { label: "Projects", href: "/admin/projects" },
-  { label: "Faculty", href: "/admin/faculty" },
+  { label: "Manage Users", href: "/admin/faculty" },
 ];
 
 export function MainSidebar() {

@@ -2,16 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { matchIsValidTel } from "mui-tel-input";
-import { FormPhoneField } from "@/components/fields/FormPhoneField";
-import { FormSelectField } from "@/components/fields/FormSelectField";
-import { FormTextField } from "@/components/fields/FormTextField";
-import { genderOptions } from "@/components/layout/auth/authOptions";
+import { FacultyProfileFields } from "@/components/layout/faculty/FacultyProfileFields";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/Button";
 import type { AuthResponse } from "@/types/auth";
 import type { FacultyProfileRequest } from "@/types/faculty";
-import { noHtmlValidation } from "@/utils/validation/formValidation";
 
 export function FacultyProfileForm() {
   const { updateUser, user } = useAuth();
@@ -77,62 +72,19 @@ export function FacultyProfileForm() {
         noValidate
         onSubmit={handleSubmit(onSubmit)}
       >
-        <FormTextField
-          control={control}
-          name="fullName"
-          label="Full name"
-          placeholder="Enter name"
-          rules={{
-            required: "Full name is required",
-            minLength: {
-              value: 3,
-              message: "Full name must be at least 3 characters",
-            },
-            validate: noHtmlValidation,
-          }}
-        />
-        <FormSelectField
-          control={control}
-          name="gender"
-          label="Gender"
-          options={genderOptions}
-          rules={{ required: "Gender is required" }}
-        />
-        <FormPhoneField
-          control={control}
-          name="contactNumber"
-          label="Contact number"
-          defaultCountry="PK"
-          placeholder="Enter contact number"
-          rules={{
-            required: "Contact number is required",
-            validate: {
-              noHtml: noHtmlValidation,
-              validPhone: (value) =>
-                matchIsValidTel(value) || "Enter a valid contact number",
-            },
-          }}
-        />
-        <FormTextField
-          control={control}
-          name="department"
-          label="Department"
-          placeholder="Enter department"
-          rules={{
-            required: "Department is required",
-            validate: noHtmlValidation,
-          }}
-        />
-        <FormTextField
-          control={control}
-          name="designation"
-          label="Designation"
-          placeholder="Enter designation"
-          rules={{
-            required: "Designation is required",
-            validate: noHtmlValidation,
-          }}
-        />
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-ink" htmlFor="email">
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            value={user?.email ?? ""}
+            disabled
+            className="h-11 w-full rounded-md border border-border bg-surface-muted px-3 text-sm text-muted outline-none"
+          />
+        </div>
+        <FacultyProfileFields control={control} />
 
         <div className="sm:col-span-2">
           {formError ? (
