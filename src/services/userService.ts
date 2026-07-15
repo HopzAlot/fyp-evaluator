@@ -16,7 +16,7 @@ import {
 type CreateUserAccountValues = {
   email: string;
   password: string;
-  name?: string;
+  fullName?: string;
   gender?: string;
   role: UserRole;
   status: UserStatus;
@@ -33,7 +33,7 @@ export async function createUserAccount(values: CreateUserAccountValues) {
 
   return UserModel.create({
     email,
-    name: values.name ? normalizeText(values.name) : "",
+    fullName: values.fullName ? normalizeText(values.fullName) : "",
     gender: values.gender ? normalizeGender(values.gender) : "",
     role: values.role,
     status: values.status,
@@ -89,7 +89,7 @@ export async function getAdminFacultyUsers(): Promise<AdminFacultyUser[]> {
       id: user._id.toString(),
       email: user.email,
       status: user.status,
-      fullName: profile?.fullName ?? user.name,
+      fullName: profile?.fullName ?? user.fullName,
       contactNumber: profile?.contactNumber,
       department: profile?.department,
       designation: profile?.designation,
@@ -120,7 +120,7 @@ export function toAuthUser(
     email: user.email,
     role: user.role,
     status: user.status,
-    fullName: faculty?.fullName ?? user.name,
+    fullName: faculty?.fullName ?? user.fullName,
     contactNumber: faculty?.contactNumber,
     department: faculty?.department,
     designation: faculty?.designation,

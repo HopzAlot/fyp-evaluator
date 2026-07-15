@@ -9,7 +9,7 @@ import type { UserRole, UserStatus } from "@/types/auth";
 
 type User = {
   email: string;
-  name: string;
+  fullName: string;
   gender: string;
   role: UserRole;
   status: UserStatus;
@@ -29,7 +29,7 @@ const UserSchema = new Schema<User>(
       lowercase: true,
       trim: true,
     },
-    name: {
+    fullName: {
       type: String,
       default: "",
       trim: true,
