@@ -225,11 +225,6 @@ export function AdminProjectsManager({
       currentIds.filter((projectId) => !deletedIds.has(projectId)),
     );
     setCleanupResult(result);
-    setMessage(
-      `${data.deletedCount ?? 0} old duplicate project(s) deleted. ${
-        data.backfilledCount ?? 0
-      } old project key(s) backfilled.`,
-    );
   };
 
   const startEdit = (project: AdminProject) => {
