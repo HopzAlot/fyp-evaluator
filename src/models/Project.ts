@@ -74,6 +74,7 @@ const ProjectSchema = new Schema<Project>(
   {
     collection: "projects",
     timestamps: true,
+    versionKey: false,
   },
 );
 
