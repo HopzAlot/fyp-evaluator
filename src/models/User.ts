@@ -9,6 +9,8 @@ import type { UserRole, UserStatus } from "@/types/auth";
 
 type User = {
   email: string;
+  name: string;
+  gender: string;
   role: UserRole;
   status: UserStatus;
   passwordHash: string;
@@ -24,6 +26,18 @@ const UserSchema = new Schema<User>(
       type: String,
       required: true,
       unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    name: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    gender: {
+      type: String,
+      enum: ["male", "female", "prefer-not-to-say", ""],
+      default: "",
       lowercase: true,
       trim: true,
     },

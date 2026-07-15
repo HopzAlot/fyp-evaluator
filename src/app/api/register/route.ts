@@ -21,6 +21,8 @@ export async function POST(request: Request) {
     const userAccount = await createUserAccount({
       email: payload.email,
       password: payload.password,
+      name: payload.fullName,
+      gender: payload.gender,
       role: "faculty",
       status: "inactive",
     });

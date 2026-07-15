@@ -5,6 +5,10 @@ import { UserModel, type UserDocument } from "@/models/User";
 import type { AuthUser, UserRole, UserStatus } from "@/types/auth";
 import type { AdminFacultyUser } from "@/types/faculty";
 import {
+  normalizeGender,
+  normalizeText,
+} from "@/utils/normalization/facultyNormalization";
+import {
   getFacultyProfilesByUserIds,
   type FacultyDocument,
 } from "./facultyService";
@@ -12,6 +16,8 @@ import {
 type CreateUserAccountValues = {
   email: string;
   password: string;
+  name?: string;
+  gender?: string;
   role: UserRole;
   status: UserStatus;
 };
@@ -27,6 +33,8 @@ export async function createUserAccount(values: CreateUserAccountValues) {
 
   return UserModel.create({
     email,
+    name: values.name ? normalizeText(values.name) : "",
+    gender: values.gender ? normalizeGender(values.gender) : "",
     role: values.role,
     status: values.status,
     passwordHash: await bcrypt.hash(values.password, 12),
@@ -81,11 +89,11 @@ export async function getAdminFacultyUsers(): Promise<AdminFacultyUser[]> {
       id: user._id.toString(),
       email: user.email,
       status: user.status,
-      fullName: profile?.fullName,
+      fullName: profile?.fullName ?? user.name,
       contactNumber: profile?.contactNumber,
       department: profile?.department,
       designation: profile?.designation,
-      gender: profile?.gender,
+      gender: profile?.gender ?? user.gender,
     };
   });
 }
@@ -112,10 +120,10 @@ export function toAuthUser(
     email: user.email,
     role: user.role,
     status: user.status,
-    fullName: faculty?.fullName,
+    fullName: faculty?.fullName ?? user.name,
     contactNumber: faculty?.contactNumber,
     department: faculty?.department,
     designation: faculty?.designation,
-    gender: faculty?.gender,
+    gender: faculty?.gender ?? user.gender,
   };
 }
