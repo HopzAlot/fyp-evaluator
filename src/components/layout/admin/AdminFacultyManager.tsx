@@ -1,9 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
+import { useRouteRefresh } from "@/hooks/useRouteRefresh";
 import type { AdminFacultyUser, UserStatus } from "@/types/auth";
 import { filterFaculty } from "@/utils/search/searchFilters";
 
@@ -20,8 +20,7 @@ type AdminFacultyManagerProps = {
 export function AdminFacultyManager({
   initialFaculty,
 }: AdminFacultyManagerProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const { isRefreshing, refreshRoute } = useRouteRefresh();
   const [faculty, setFaculty] = useState<AdminFacultyUser[]>(initialFaculty);
   const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState("");
@@ -41,10 +40,7 @@ export function AdminFacultyManager({
 
   const refreshFaculty = () => {
     setError("");
-
-    startTransition(() => {
-      router.refresh();
-    });
+    refreshRoute();
   };
 
   const updateStatus = async (userId: string, status: UserStatus) => {
@@ -161,7 +157,7 @@ export function AdminFacultyManager({
               />
               <Button
                 type="button"
-                loading={isPending}
+                loading={isRefreshing}
                 loadingText="Refreshing"
                 onClick={refreshFaculty}
               >

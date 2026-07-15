@@ -1,11 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { ProjectEditRow } from "@/components/layout/admin/ProjectEditRow";
 import { ProjectImportPanel } from "@/components/layout/admin/ProjectImportPanel";
 import { Button } from "@/components/ui/Button";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
+import { useRouteRefresh } from "@/hooks/useRouteRefresh";
 import type {
   AdminProject,
   ProjectStatus,
@@ -40,8 +40,7 @@ type AdminProjectsManagerProps = {
 export function AdminProjectsManager({
   initialProjects,
 }: AdminProjectsManagerProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const { isRefreshing, refreshRoute } = useRouteRefresh();
   const [projects, setProjects] = useState<AdminProject[]>(initialProjects);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -82,10 +81,7 @@ export function AdminProjectsManager({
   const refreshProjects = () => {
     setError("");
     setMessage("");
-
-    startTransition(() => {
-      router.refresh();
-    });
+    refreshRoute();
   };
 
   const toggleProject = (projectId: string) => {
@@ -514,7 +510,7 @@ export function AdminProjectsManager({
           />
           <Button
             type="button"
-            loading={isPending}
+            loading={isRefreshing}
             loadingText="Refreshing"
             onClick={refreshProjects}
           >

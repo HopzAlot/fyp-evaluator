@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
+import { useRouteRefresh } from "@/hooks/useRouteRefresh";
 import type { FacultyProject } from "@/types/project";
 import { filterProjects } from "@/utils/search/searchFilters";
 
@@ -75,19 +75,12 @@ const columns: DataTableColumn<FacultyProject>[] = [
 ];
 
 export function ProjectsTable({ projects }: ProjectsTableProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const { isRefreshing, refreshRoute } = useRouteRefresh();
   const [searchTerm, setSearchTerm] = useState("");
   const filteredProjects = useMemo(
     () => filterProjects(projects, searchTerm),
     [projects, searchTerm],
   );
-
-  const refreshProjects = () => {
-    startTransition(() => {
-      router.refresh();
-    });
-  };
 
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
@@ -107,9 +100,9 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
           />
           <Button
             type="button"
-            loading={isPending}
+            loading={isRefreshing}
             loadingText="Refreshing"
-            onClick={refreshProjects}
+            onClick={refreshRoute}
           >
             Refresh
           </Button>
