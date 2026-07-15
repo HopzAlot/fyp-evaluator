@@ -9,12 +9,6 @@ import { useRouteRefresh } from "@/hooks/useRouteRefresh";
 import type { Project, ProjectInput } from "@/types/project";
 import { filterProjects } from "@/utils/search/searchFilters";
 
-type CleanupResult = {
-  backfilledCount: number;
-  deletedCount: number;
-  deletedIds: string[];
-};
-
 type AdminProjectsManagerProps = {
   initialProjects: Project[];
 };
@@ -31,12 +25,6 @@ export function AdminProjectsManager({
   );
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [cleaningOldDuplicates, setCleaningOldDuplicates] = useState(false);
-  const [cleanupModalOpen, setCleanupModalOpen] = useState(false);
-  const [cleanupResult, setCleanupResult] = useState<CleanupResult | null>(
-    null,
-  );
-  const [cleanupError, setCleanupError] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
@@ -147,61 +135,6 @@ export function AdminProjectsManager({
     );
     setSelectedIds([]);
     setMessage(`${data.deletedCount ?? 0} project(s) deleted successfully.`);
-  };
-
-  const openCleanupModal = () => {
-    setCleanupResult(null);
-    setCleanupError("");
-    setCleanupModalOpen(true);
-  };
-
-  const closeCleanupModal = () => {
-    if (cleaningOldDuplicates) {
-      return;
-    }
-
-    setCleanupModalOpen(false);
-    setCleanupResult(null);
-    setCleanupError("");
-  };
-
-  const cleanupOldDuplicates = async () => {
-    setError("");
-    setMessage("");
-    setCleanupError("");
-    setCleanupResult(null);
-    setCleaningOldDuplicates(true);
-
-    const response = await fetch("/api/admin/projects/cleanup-old-duplicates", {
-      method: "POST",
-    });
-    const data = (await response.json()) as {
-      backfilledCount?: number;
-      deletedCount?: number;
-      deletedIds?: string[];
-      message?: string;
-    };
-
-    setCleaningOldDuplicates(false);
-
-    if (!response.ok) {
-      setCleanupError(data.message ?? "Unable to clean old duplicate projects");
-      return;
-    }
-
-    const result = {
-      backfilledCount: data.backfilledCount ?? 0,
-      deletedCount: data.deletedCount ?? 0,
-      deletedIds: data.deletedIds ?? [],
-    };
-    const deletedIds = new Set(data.deletedIds ?? []);
-    setProjects((currentProjects) =>
-      currentProjects.filter((project) => !deletedIds.has(project.id)),
-    );
-    setSelectedIds((currentIds) =>
-      currentIds.filter((projectId) => !deletedIds.has(projectId)),
-    );
-    setCleanupResult(result);
   };
 
   const startEdit = (project: Project) => {
@@ -434,14 +367,6 @@ export function AdminProjectsManager({
           >
             Delete selected
           </button>
-          <button
-            type="button"
-            onClick={openCleanupModal}
-            disabled={cleaningOldDuplicates}
-            className="h-11 rounded-md border border-border px-4 text-sm font-semibold text-ink transition hover:bg-surface-muted disabled:cursor-not-allowed disabled:text-muted"
-          >
-            {cleaningOldDuplicates ? "Cleaning" : "Clean old duplicates"}
-          </button>
         </ProjectImportPanel>
 
         <DataTable
@@ -458,76 +383,6 @@ export function AdminProjectsManager({
         />
       </section>
 
-      {cleanupModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="cleanup-old-duplicates-title"
-            className="w-full max-w-md rounded-lg border border-border bg-surface p-5 shadow-xl"
-          >
-            <div>
-              <h2
-                id="cleanup-old-duplicates-title"
-                className="text-base font-semibold text-ink"
-              >
-                Clean old duplicate projects
-              </h2>
-              <p className="mt-2 text-sm text-muted">
-                This only checks old project records that do not have a project
-                key. Unique old records will be backfilled, while duplicate old
-                records will be deleted.
-              </p>
-            </div>
-
-            {cleanupError ? (
-              <p className="mt-4 rounded-md border border-danger bg-danger/10 px-3 py-2 text-sm font-medium text-danger">
-                {cleanupError}
-              </p>
-            ) : null}
-
-            {cleanupResult ? (
-              <div className="mt-4 rounded-md border border-border bg-background px-3 py-3">
-                {cleanupResult.deletedCount > 0 ? (
-                  <p className="text-sm font-medium text-ink">
-                    {cleanupResult.deletedCount} old duplicate project(s) were
-                    deleted.
-                  </p>
-                ) : (
-                  <p className="text-sm font-medium text-ink">
-                    No old duplicate projects were found.
-                  </p>
-                )}
-                <p className="mt-1 text-sm text-muted">
-                  {cleanupResult.backfilledCount} old project key(s) were
-                  backfilled.
-                </p>
-              </div>
-            ) : null}
-
-            <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={closeCleanupModal}
-                disabled={cleaningOldDuplicates}
-                className="h-10 rounded-md border border-border px-4 text-sm font-semibold text-ink transition hover:bg-surface-muted disabled:cursor-not-allowed disabled:text-muted"
-              >
-                Close
-              </button>
-              {!cleanupResult ? (
-                <button
-                  type="button"
-                  onClick={cleanupOldDuplicates}
-                  disabled={cleaningOldDuplicates}
-                  className="h-10 rounded-md bg-danger px-4 text-sm font-semibold text-white transition hover:bg-danger/90 disabled:cursor-not-allowed disabled:bg-muted"
-                >
-                  {cleaningOldDuplicates ? "Cleaning" : "Clean duplicates"}
-                </button>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ) : null}
     </>
   );
 }
