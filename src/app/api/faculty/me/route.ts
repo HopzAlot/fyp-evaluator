@@ -4,7 +4,7 @@ import {
   updateFacultyProfile,
 } from "@/services/facultyService";
 import { getUserById, toAuthUser } from "@/services/userService";
-import type { FacultyProfileRequest } from "@/types/auth";
+import type { FacultyProfileRequest } from "@/types/faculty";
 import { validateFacultyProfilePayload } from "@/utils/validation/authValidation";
 
 export async function PATCH(request: Request) {

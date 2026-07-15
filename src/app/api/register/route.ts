@@ -6,7 +6,7 @@ import {
   deleteUserAccount,
   toAuthUser,
 } from "@/services/userService";
-import type { RegisterFacultyRequest } from "@/types/auth";
+import type { RegisterFacultyRequest } from "@/types/faculty";
 import { validateFacultyRegisterPayload } from "@/utils/validation/authValidation";
 
 export async function POST(request: Request) {

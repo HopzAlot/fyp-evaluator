@@ -1,7 +1,10 @@
 import type { Types } from "mongoose";
 import { connectDatabase } from "@/lib/db/mongoose";
 import { FacultyModel } from "@/models/Faculty";
-import type { FacultyProfileRequest, RegisterFacultyRequest } from "@/types/auth";
+import type {
+  FacultyProfileRequest,
+  RegisterFacultyRequest,
+} from "@/types/faculty";
 import {
   normalizeGender,
   normalizeText,

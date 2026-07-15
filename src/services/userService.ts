@@ -2,12 +2,8 @@ import bcrypt from "bcryptjs";
 import { isValidObjectId, type Types } from "mongoose";
 import { connectDatabase } from "@/lib/db/mongoose";
 import { UserModel, type UserDocument } from "@/models/User";
-import type {
-  AdminFacultyUser,
-  AuthUser,
-  UserRole,
-  UserStatus,
-} from "@/types/auth";
+import type { AuthUser, UserRole, UserStatus } from "@/types/auth";
+import type { AdminFacultyUser } from "@/types/faculty";
 import {
   getFacultyProfilesByUserIds,
   type FacultyDocument,

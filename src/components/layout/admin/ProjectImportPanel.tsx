@@ -2,7 +2,7 @@
 
 import { useRef, useState, type DragEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
-import type { AdminProject, ProjectBase } from "@/types/project";
+import type { Project, ProjectInput } from "@/types/project";
 import { parseProjectCsv } from "@/utils/csv/projectCsv";
 
 const csvColumns = [
@@ -20,7 +20,7 @@ const csvColumns = [
 type ProjectImportPanelProps = {
   children?: ReactNode;
   header: ReactNode;
-  onImported: (projects: AdminProject[]) => void;
+  onImported: (projects: Project[]) => void;
   onError: (message: string) => void;
   onMessage: (message: string) => void;
 };
@@ -34,7 +34,7 @@ export function ProjectImportPanel({
 }: ProjectImportPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewFile, setPreviewFile] = useState<File | null>(null);
-  const [previewRows, setPreviewRows] = useState<ProjectBase[]>([]);
+  const [previewRows, setPreviewRows] = useState<ProjectInput[]>([]);
   const [importOpen, setImportOpen] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -118,7 +118,7 @@ export function ProjectImportPanel({
       body: formData,
     });
     const data = (await response.json()) as {
-      projects?: AdminProject[];
+      projects?: Project[];
       skippedCount?: number;
       message?: string;
     };

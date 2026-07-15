@@ -9,7 +9,8 @@ import { FormTextField } from "@/components/fields/FormTextField";
 import { genderOptions } from "@/components/layout/auth/authOptions";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/Button";
-import type { AuthResponse, FacultyProfileRequest } from "@/types/auth";
+import type { AuthResponse } from "@/types/auth";
+import type { FacultyProfileRequest } from "@/types/faculty";
 import { noHtmlValidation } from "@/utils/validation/formValidation";
 
 export function FacultyProfileForm() {

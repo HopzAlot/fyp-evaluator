@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
 import { useRouteRefresh } from "@/hooks/useRouteRefresh";
-import type { AdminFacultyUser, UserStatus } from "@/types/auth";
+import type { UserStatus } from "@/types/auth";
+import type { AdminFacultyUser } from "@/types/faculty";
 import { filterFaculty } from "@/utils/search/searchFilters";
 
 const statLabels = [

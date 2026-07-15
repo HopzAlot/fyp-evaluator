@@ -2,53 +2,34 @@
 
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { FormSelectField } from "@/components/fields/FormSelectField";
 import { FormTextField } from "@/components/fields/FormTextField";
 import { Button } from "@/components/ui/Button";
-import type {
-  AdminProject,
-  ProjectStatus,
-  ProjectUpdateRequest,
-} from "@/types/project";
+import type { Project, ProjectInput } from "@/types/project";
 import { noHtmlValidation } from "@/utils/validation/formValidation";
 
-const statusLabels: Record<ProjectStatus, string> = {
-  pending: "Pending",
-  "under-review": "Under Review",
-  accepted: "Accepted",
-  rejected: "Rejected",
-};
-
-const statusOptions = Object.entries(statusLabels).map(([value, label]) => ({
-  label,
-  value,
-}));
-
-const emptyProjectValues: ProjectUpdateRequest = {
+const emptyProjectValues: ProjectInput = {
   title: "",
   students: ["", "", "", ""],
   supervisor: "",
   coSupervisor: "",
   industrialPartner: "",
   sdg: "",
-  status: "pending",
 };
 
-const getProjectFormValues = (project: AdminProject): ProjectUpdateRequest => ({
+const getProjectFormValues = (project: Project): ProjectInput => ({
   title: project.title,
   students: [...project.students, "", "", "", ""].slice(0, 4),
   supervisor: project.supervisor,
   coSupervisor: project.coSupervisor,
   industrialPartner: project.industrialPartner,
   sdg: project.sdg,
-  status: project.status,
 });
 
 type ProjectEditRowProps = {
-  project: AdminProject;
+  project: Project;
   saving: boolean;
   onCancel: () => void;
-  onSave: (values: ProjectUpdateRequest) => void;
+  onSave: (values: ProjectInput) => void;
 };
 
 export function ProjectEditRow({
@@ -62,7 +43,7 @@ export function ProjectEditRow({
     handleSubmit,
     reset,
     formState: { isSubmitting },
-  } = useForm<ProjectUpdateRequest>({
+  } = useForm<ProjectInput>({
     defaultValues: emptyProjectValues,
     mode: "onChange",
   });
@@ -82,7 +63,7 @@ export function ProjectEditRow({
           <div>
             <h3 className="text-sm font-semibold text-ink">Edit project</h3>
             <p className="mt-1 text-sm text-muted">
-              Update project details and status.
+              Update project details.
             </p>
           </div>
           <button
@@ -154,13 +135,6 @@ export function ProjectEditRow({
               required: "SDG is required",
               validate: noHtmlValidation,
             }}
-          />
-          <FormSelectField
-            control={control}
-            name="status"
-            label="Status"
-            options={statusOptions}
-            rules={{ required: "Status is required" }}
           />
         </div>
 

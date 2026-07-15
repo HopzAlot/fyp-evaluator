@@ -6,26 +6,8 @@ import { ProjectImportPanel } from "@/components/layout/admin/ProjectImportPanel
 import { Button } from "@/components/ui/Button";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { useRouteRefresh } from "@/hooks/useRouteRefresh";
-import type {
-  AdminProject,
-  ProjectStatus,
-  ProjectUpdateRequest,
-} from "@/types/project";
+import type { Project, ProjectInput } from "@/types/project";
 import { filterProjects } from "@/utils/search/searchFilters";
-
-const statusLabels: Record<ProjectStatus, string> = {
-  pending: "Pending",
-  "under-review": "Under Review",
-  accepted: "Accepted",
-  rejected: "Rejected",
-};
-
-const statusStyles: Record<ProjectStatus, string> = {
-  pending: "bg-surface-muted text-ink",
-  "under-review": "bg-primary/10 text-primary",
-  accepted: "bg-accent-soft text-accent",
-  rejected: "bg-danger/10 text-danger",
-};
 
 type CleanupResult = {
   backfilledCount: number;
@@ -34,21 +16,20 @@ type CleanupResult = {
 };
 
 type AdminProjectsManagerProps = {
-  initialProjects: AdminProject[];
+  initialProjects: Project[];
 };
 
 export function AdminProjectsManager({
   initialProjects,
 }: AdminProjectsManagerProps) {
   const { isRefreshing, refreshRoute } = useRouteRefresh();
-  const [projects, setProjects] = useState<AdminProject[]>(initialProjects);
+  const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [editingProject, setEditingProject] = useState<AdminProject | null>(
+  const [editingProject, setEditingProject] = useState<Project | null>(
     null,
   );
   const [saving, setSaving] = useState(false);
-  const [statusUpdatingId, setStatusUpdatingId] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [cleaningOldDuplicates, setCleaningOldDuplicates] = useState(false);
   const [cleanupModalOpen, setCleanupModalOpen] = useState(false);
@@ -60,10 +41,7 @@ export function AdminProjectsManager({
   const [message, setMessage] = useState("");
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const filteredProjects = useMemo(
-    () =>
-      filterProjects(projects, searchTerm, {
-        getStatusLabel: (project) => statusLabels[project.status],
-      }),
+    () => filterProjects(projects, searchTerm),
     [projects, searchTerm],
   );
   const allSelected =
@@ -72,8 +50,11 @@ export function AdminProjectsManager({
   const counts = useMemo(
     () => ({
       total: projects.length,
-      pending: projects.filter((project) => project.status === "pending").length,
-      accepted: projects.filter((project) => project.status === "accepted").length,
+      students: projects.reduce(
+        (count, project) => count + project.students.length,
+        0,
+      ),
+      industry: projects.filter((project) => project.industrialPartner).length,
     }),
     [projects],
   );
@@ -223,7 +204,7 @@ export function AdminProjectsManager({
     setCleanupResult(result);
   };
 
-  const startEdit = (project: AdminProject) => {
+  const startEdit = (project: Project) => {
     setError("");
     setMessage("");
     setEditingProject(project);
@@ -233,7 +214,7 @@ export function AdminProjectsManager({
     setEditingProject(null);
   };
 
-  const saveProject = async (values: ProjectUpdateRequest) => {
+  const saveProject = async (values: ProjectInput) => {
     if (!editingProject) {
       return;
     }
@@ -253,7 +234,7 @@ export function AdminProjectsManager({
       body: JSON.stringify(payload),
     });
     const data = (await response.json()) as {
-      project?: AdminProject;
+      project?: Project;
       message?: string;
     };
 
@@ -273,59 +254,7 @@ export function AdminProjectsManager({
     setMessage("Project updated successfully.");
   };
 
-  const updateProjectStatus = async (
-    project: AdminProject,
-    status: ProjectStatus,
-  ) => {
-    if (project.status === status) {
-      return;
-    }
-
-    setError("");
-    setMessage("");
-    setStatusUpdatingId(project.id);
-
-    const payload: ProjectUpdateRequest = {
-      title: project.title,
-      students: project.students,
-      supervisor: project.supervisor,
-      coSupervisor: project.coSupervisor,
-      industrialPartner: project.industrialPartner,
-      sdg: project.sdg,
-      status,
-    };
-
-    const response = await fetch(`/api/admin/projects/${project.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = (await response.json()) as {
-      project?: AdminProject;
-      message?: string;
-    };
-
-    setStatusUpdatingId("");
-
-    if (!response.ok || !data.project) {
-      setError(data.message ?? "Unable to update project status");
-      return;
-    }
-
-    setProjects((currentProjects) =>
-      currentProjects.map((currentProject) =>
-        currentProject.id === data.project?.id ? data.project : currentProject,
-      ),
-    );
-
-    if (editingProject?.id === data.project.id) {
-      setEditingProject(data.project);
-    }
-
-    setMessage("Project status updated successfully.");
-  };
-
-  const renderProjectEditForm = (project: AdminProject) => {
+  const renderProjectEditForm = (project: Project) => {
     if (editingProject?.id !== project.id) {
       return null;
     }
@@ -340,7 +269,7 @@ export function AdminProjectsManager({
     );
   };
 
-  const columns: DataTableColumn<AdminProject>[] = [
+  const columns: DataTableColumn<Project>[] = [
     {
       key: "select",
       header: "",
@@ -403,32 +332,6 @@ export function AdminProjectsManager({
       ),
     },
     {
-      key: "status",
-      header: "Status",
-      render: (project) => (
-        <select
-          value={project.status}
-          disabled={statusUpdatingId === project.id}
-          onChange={(event) =>
-            updateProjectStatus(
-              project,
-              event.target.value as ProjectStatus,
-            )
-          }
-          className={`h-9 rounded-md border border-border px-2.5 text-xs font-semibold outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-70 ${
-            statusStyles[project.status]
-          }`}
-          aria-label={`Change status for ${project.title}`}
-        >
-          {Object.entries(statusLabels).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-      ),
-    },
-    {
       key: "action",
       header: "Action",
       className: "text-right",
@@ -462,15 +365,15 @@ export function AdminProjectsManager({
           <p className="mt-3 text-3xl font-semibold text-ink">{counts.total}</p>
         </article>
         <article className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-          <p className="text-sm font-medium text-muted">Pending</p>
+          <p className="text-sm font-medium text-muted">Project students</p>
           <p className="mt-3 text-3xl font-semibold text-ink">
-            {counts.pending}
+            {counts.students}
           </p>
         </article>
         <article className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-          <p className="text-sm font-medium text-muted">Accepted</p>
+          <p className="text-sm font-medium text-muted">Industry linked</p>
           <p className="mt-3 text-3xl font-semibold text-ink">
-            {counts.accepted}
+            {counts.industry}
           </p>
         </article>
       </section>

@@ -5,14 +5,14 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { useRouteRefresh } from "@/hooks/useRouteRefresh";
-import type { FacultyProject } from "@/types/project";
+import type { Project } from "@/types/project";
 import { filterProjects } from "@/utils/search/searchFilters";
 
 type ProjectsTableProps = {
-  projects: FacultyProject[];
+  projects: Project[];
 };
 
-const columns: DataTableColumn<FacultyProject>[] = [
+const columns: DataTableColumn<Project>[] = [
   {
     key: "project",
     header: "Project",

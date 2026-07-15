@@ -3,18 +3,11 @@ import {
   deleteProjectById,
   updateProjectById,
 } from "@/services/projectService";
-import type { ProjectStatus, ProjectUpdateRequest } from "@/types/project";
+import type { ProjectInput } from "@/types/project";
 import { normalizeText } from "@/utils/normalization/facultyNormalization";
 
-const statuses: ProjectStatus[] = [
-  "pending",
-  "under-review",
-  "accepted",
-  "rejected",
-];
-
-function validateProjectPayload(payload: unknown): ProjectUpdateRequest {
-  const values = payload as Partial<ProjectUpdateRequest>;
+function validateProjectPayload(payload: unknown): ProjectInput {
+  const values = payload as Partial<ProjectInput>;
   const title = normalizeText(values.title ?? "");
   const students = Array.isArray(values.students)
     ? values.students
@@ -47,10 +40,6 @@ function validateProjectPayload(payload: unknown): ProjectUpdateRequest {
     throw new Error("SDG is required");
   }
 
-  if (!values.status || !statuses.includes(values.status)) {
-    throw new Error("Select a valid status");
-  }
-
   return {
     title,
     students,
@@ -58,7 +47,6 @@ function validateProjectPayload(payload: unknown): ProjectUpdateRequest {
     coSupervisor,
     industrialPartner,
     sdg,
-    status: values.status,
   };
 }
 

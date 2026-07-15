@@ -1,10 +1,4 @@
-export type ProjectStatus =
-  | "pending"
-  | "under-review"
-  | "accepted"
-  | "rejected";
-
-export type ProjectBase = {
+export type ProjectInput = {
   title: string;
   students: string[];
   supervisor: string;
@@ -13,16 +7,6 @@ export type ProjectBase = {
   sdg: string;
 };
 
-export type Project = ProjectBase & {
+export type Project = ProjectInput & {
   id: string;
-};
-
-export type AdminProject = Project & {
-  status: ProjectStatus;
-};
-
-export type FacultyProject = Project;
-
-export type ProjectUpdateRequest = ProjectBase & {
-  status: ProjectStatus;
 };

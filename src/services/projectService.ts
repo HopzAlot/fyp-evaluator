@@ -1,19 +1,14 @@
 import { isValidObjectId } from "mongoose";
 import { connectDatabase } from "@/lib/db/mongoose";
 import { ProjectModel, type ProjectDocument } from "@/models/Project";
-import type {
-  AdminProject,
-  FacultyProject,
-  ProjectBase,
-  ProjectUpdateRequest,
-} from "@/types/project";
+import type { Project, ProjectInput } from "@/types/project";
 
 function normalizeProjectKeyPart(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 export function buildProjectKey(
-  project: Pick<ProjectBase, "title" | "students" | "supervisor">,
+  project: Pick<ProjectInput, "title" | "students" | "supervisor">,
 ) {
   const students = project.students
     .map(normalizeProjectKeyPart)
@@ -110,20 +105,7 @@ export async function cleanupOldDuplicateProjects() {
   };
 }
 
-export function toAdminProject(project: ProjectDocument): AdminProject {
-  return {
-    id: project._id.toString(),
-    title: project.title,
-    students: project.students,
-    supervisor: project.supervisor,
-    coSupervisor: project.coSupervisor,
-    industrialPartner: project.industrialPartner,
-    sdg: project.sdg,
-    status: project.status,
-  };
-}
-
-export function toFacultyProject(project: ProjectDocument): FacultyProject {
+export function toProject(project: ProjectDocument): Project {
   return {
     id: project._id.toString(),
     title: project.title,
@@ -141,7 +123,7 @@ export async function getAdminProjects() {
 
   const projects = await ProjectModel.find().sort({ createdAt: -1 });
 
-  return projects.map(toAdminProject);
+  return projects.map(toProject);
 }
 
 export async function getFacultyProjects() {
@@ -149,7 +131,7 @@ export async function getFacultyProjects() {
 
   const projects = await ProjectModel.find().sort({ createdAt: -1 });
 
-  return projects.map(toFacultyProject);
+  return projects.map(toProject);
 }
 
 export async function getFacultyProjectById(projectId: string) {
@@ -161,7 +143,7 @@ export async function getFacultyProjectById(projectId: string) {
 
   const project = await ProjectModel.findById(projectId);
 
-  return project ? toFacultyProject(project) : null;
+  return project ? toProject(project) : null;
 }
 
 export async function getFacultyDashboardSummary() {
@@ -179,7 +161,7 @@ export async function getFacultyDashboardSummary() {
   };
 }
 
-export async function createProjectsFromCsvRows(rows: ProjectBase[]) {
+export async function createProjectsFromCsvRows(rows: ProjectInput[]) {
   await connectDatabase();
   await backfillMissingProjectKeys();
 
@@ -210,16 +192,12 @@ export async function createProjectsFromCsvRows(rows: ProjectBase[]) {
     };
   }
 
-  const projects = await ProjectModel.insertMany(
-    rowsToInsert.map((row) => ({
-      ...row,
-      status: "pending",
-    })),
-    { ordered: false },
-  );
+  const projects = await ProjectModel.insertMany(rowsToInsert, {
+    ordered: false,
+  });
 
   return {
-    projects: projects.map(toAdminProject),
+    projects: projects.map(toProject),
     skippedCount,
   };
 }
@@ -237,7 +215,7 @@ export async function deleteProjectById(projectId: string) {
 
 export async function updateProjectById(
   projectId: string,
-  values: ProjectUpdateRequest,
+  values: ProjectInput,
 ) {
   if (!isValidObjectId(projectId)) {
     return null;
@@ -272,7 +250,7 @@ export async function updateProjectById(
     },
   );
 
-  return project ? toAdminProject(project) : null;
+  return project ? toProject(project) : null;
 }
 
 export async function deleteProjectsByIds(projectIds: string[]) {

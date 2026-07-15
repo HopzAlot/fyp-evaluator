@@ -1,8 +1,8 @@
+import type { LoginRequest } from "@/types/auth";
 import type {
   FacultyProfileRequest,
-  LoginRequest,
   RegisterFacultyRequest,
-} from "@/types/auth";
+} from "@/types/faculty";
 import {
   isGenderValue,
   normalizeGender,
