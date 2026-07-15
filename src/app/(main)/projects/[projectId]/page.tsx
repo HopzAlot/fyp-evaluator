@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StudentEvaluationPanel } from "@/components/layout/projects/StudentEvaluationPanel";
-import { evaluationCriteria, evaluationPhases } from "@/data/projects";
+import { evaluationCriteria, evaluationPhases } from "@/constants/evaluation";
 import { getFacultyProjectById } from "@/services/projectService";
 
 const initialPhase = "Synopsis";
