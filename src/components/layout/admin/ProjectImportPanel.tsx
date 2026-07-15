@@ -205,13 +205,13 @@ export function ProjectImportPanel({
             </div>
 
             <div className="max-h-[calc(100vh-160px)] overflow-auto px-5 py-4">
-              <div className="rounded-lg border border-danger bg-danger/10 p-4">
-                <p className="text-sm font-semibold text-danger">
+              <div className="rounded-lg border border-highlight bg-highlight-soft p-4">
+                <p className="text-sm font-semibold text-ink">
                   CSV header format must match this reference.
                 </p>
                 <div className="mt-3 overflow-x-auto">
                   <table className="w-full min-w-[760px] text-left text-sm">
-                    <thead className="border-b border-danger/30 text-xs uppercase text-danger">
+                    <thead className="border-b border-highlight/30 text-xs uppercase text-ink">
                       <tr>
                         {csvColumns.map((column) => (
                           <th key={column.name} className="px-3 py-2 font-semibold">

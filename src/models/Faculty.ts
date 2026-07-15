@@ -59,6 +59,7 @@ const FacultySchema = new Schema<Faculty>(
   {
     collection: "faculty",
     timestamps: true,
+    versionKey: false,
   },
 );
 
