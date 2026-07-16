@@ -17,7 +17,7 @@ export function AdminFacultyEditForm({ faculty }: AdminFacultyEditFormProps) {
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isDirty, isSubmitting },
     setError,
   } = useForm<FacultyProfileRequest>({
     defaultValues: {
@@ -31,6 +31,10 @@ export function AdminFacultyEditForm({ faculty }: AdminFacultyEditFormProps) {
   });
 
   const onSubmit = async (values: FacultyProfileRequest) => {
+    if (!isDirty) {
+      return;
+    }
+
     const response = await fetch(`/api/admin/faculty/${faculty.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -99,7 +103,12 @@ export function AdminFacultyEditForm({ faculty }: AdminFacultyEditFormProps) {
                 {errors.root.message}
               </p>
             ) : null}
-            <Button type="submit" loading={isSubmitting} loadingText="Updating">
+            <Button
+              type="submit"
+              disabled={!isDirty}
+              loading={isSubmitting}
+              loadingText="Updating"
+            >
               Update
             </Button>
           </div>

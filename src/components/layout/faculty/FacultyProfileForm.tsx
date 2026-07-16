@@ -16,7 +16,7 @@ export function FacultyProfileForm() {
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting },
+    formState: { isDirty, isSubmitting },
   } = useForm<FacultyProfileRequest>({
     defaultValues: {
       fullName: "",
@@ -43,6 +43,10 @@ export function FacultyProfileForm() {
   }, [reset, user]);
 
   const onSubmit = async (values: FacultyProfileRequest) => {
+    if (!isDirty) {
+      return;
+    }
+
     setFormError("");
     setMessage("");
 
@@ -98,6 +102,7 @@ export function FacultyProfileForm() {
           <Button
             type="submit"
             className="w-full sm:w-auto"
+            disabled={!isDirty}
             loading={isSubmitting}
             loadingText="Saving"
           >

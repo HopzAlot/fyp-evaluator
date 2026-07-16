@@ -42,7 +42,7 @@ export function ProjectEditRow({
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting },
+    formState: { isDirty, isSubmitting },
   } = useForm<ProjectInput>({
     defaultValues: emptyProjectValues,
     mode: "onChange",
@@ -57,7 +57,13 @@ export function ProjectEditRow({
       <form
         className="rounded-lg border border-border bg-surface p-4"
         noValidate
-        onSubmit={handleSubmit(onSave)}
+        onSubmit={handleSubmit((values) => {
+          if (!isDirty) {
+            return;
+          }
+
+          onSave(values);
+        })}
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -141,6 +147,7 @@ export function ProjectEditRow({
         <Button
           type="submit"
           className="mt-4"
+          disabled={!isDirty}
           loading={saving || isSubmitting}
           loadingText="Saving"
         >
