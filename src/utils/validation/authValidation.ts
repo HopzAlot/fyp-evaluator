@@ -1,6 +1,6 @@
 import type { LoginRequest } from "@/types/auth";
 import type {
-  FacultyPasswordRequest,
+  AdminFacultyPasswordRequest,
   FacultyProfileRequest,
   RegisterFacultyRequest,
 } from "@/types/faculty";
@@ -119,12 +119,8 @@ export function validateFacultyProfilePayload(payload: unknown) {
   return null;
 }
 
-export function validateFacultyPasswordPayload(payload: unknown) {
-  const values = payload as Partial<FacultyPasswordRequest>;
-
-  if (!isString(values.currentPassword) || !values.currentPassword.trim()) {
-    return "Current password is required";
-  }
+export function validateAdminFacultyPasswordPayload(payload: unknown) {
+  const values = payload as Partial<AdminFacultyPasswordRequest>;
 
   if (!isString(values.newPassword) || values.newPassword.length < 8) {
     return "New password must be at least 8 characters";
@@ -132,10 +128,6 @@ export function validateFacultyPasswordPayload(payload: unknown) {
 
   if (values.newPassword !== values.confirmPassword) {
     return "Passwords do not match";
-  }
-
-  if (values.currentPassword === values.newPassword) {
-    return "New password must be different from current password";
   }
 
   return null;

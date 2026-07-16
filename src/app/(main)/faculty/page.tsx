@@ -1,4 +1,3 @@
-import { FacultyPasswordForm } from "@/components/layout/faculty/FacultyPasswordForm";
 import { FacultyProfileForm } from "@/components/layout/faculty/FacultyProfileForm";
 
 export default function FacultyPage() {
@@ -14,7 +13,6 @@ export default function FacultyPage() {
       </section>
 
       <FacultyProfileForm />
-      <FacultyPasswordForm />
     </div>
   );
 }

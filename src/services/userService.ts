@@ -152,9 +152,8 @@ export async function updateUserProfileFields(
   );
 }
 
-export async function updateUserPassword(
+export async function updateFacultyPasswordByAdmin(
   userId: string,
-  currentPassword: string,
   newPassword: string,
 ) {
   if (!isValidObjectId(userId)) {
@@ -162,19 +161,10 @@ export async function updateUserPassword(
   }
 
   await connectDatabase();
-  const user = await UserModel.findById(userId);
+  const user = await UserModel.findOne({ _id: userId, role: "faculty" });
 
   if (!user) {
-    return "User not found";
-  }
-
-  const passwordMatches = await bcrypt.compare(
-    currentPassword,
-    user.passwordHash,
-  );
-
-  if (!passwordMatches) {
-    return "Current password is incorrect";
+    return "Faculty user not found";
   }
 
   user.passwordHash = await bcrypt.hash(newPassword, 12);
