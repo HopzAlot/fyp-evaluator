@@ -30,3 +30,9 @@ export type FacultyProfileRequest = {
   designation: string;
   gender: string;
 };
+
+export type FacultyPasswordRequest = {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+};

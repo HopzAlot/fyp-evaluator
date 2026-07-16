@@ -152,6 +152,37 @@ export async function updateUserProfileFields(
   );
 }
 
+export async function updateUserPassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+) {
+  if (!isValidObjectId(userId)) {
+    return "User not found";
+  }
+
+  await connectDatabase();
+  const user = await UserModel.findById(userId);
+
+  if (!user) {
+    return "User not found";
+  }
+
+  const passwordMatches = await bcrypt.compare(
+    currentPassword,
+    user.passwordHash,
+  );
+
+  if (!passwordMatches) {
+    return "Current password is incorrect";
+  }
+
+  user.passwordHash = await bcrypt.hash(newPassword, 12);
+  await user.save();
+
+  return null;
+}
+
 export function toAuthUser(
   user: UserDocument,
   faculty?: FacultyDocument | null,
