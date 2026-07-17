@@ -3,11 +3,15 @@ import {
   EvaluationPhaseModel,
   type EvaluationPhaseDocument,
 } from "@/models/EvaluationPhase";
-import { PloModel, type PloDocument } from "@/models/Plo";
+import type { PloDocument } from "@/models/Plo";
 import type {
   EvaluationPhase,
   EvaluationPlo,
 } from "@/types/evaluation";
+
+type PopulatedEvaluationPhase = Omit<EvaluationPhaseDocument, "plos"> & {
+  plos: PloDocument[];
+};
 
 function toEvaluationPlo(plo: PloDocument): EvaluationPlo {
   return {
@@ -20,31 +24,29 @@ function toEvaluationPlo(plo: PloDocument): EvaluationPlo {
 }
 
 function toEvaluationPhase(
-  phase: EvaluationPhaseDocument,
-  plosByCode: Map<string, EvaluationPlo>,
+  phase: PopulatedEvaluationPhase,
 ): EvaluationPhase {
-  const phasePlos = phase.plos
-    .map((code) => plosByCode.get(code))
-    .filter((plo): plo is EvaluationPlo => Boolean(plo));
-
   return {
     id: phase._id.toString(),
     key: phase.key,
     title: phase.title,
     weightage: phase.weightage,
     order: phase.order,
-    plos: phasePlos,
+    plos: phase.plos.map(toEvaluationPlo),
   };
 }
 
 export async function getEvaluationPhasesWithPlos() {
   await connectDatabase();
 
-  const [phases, plos] = await Promise.all([
-    EvaluationPhaseModel.find().sort({ order: 1 }),
-    PloModel.find().sort({ order: 1 }),
-  ]);
-  const plosByCode = new Map(plos.map((plo) => [plo.code, toEvaluationPlo(plo)]));
+  const phases = await EvaluationPhaseModel.find()
+    .sort({ order: 1 })
+    .populate<{ plos: PloDocument[] }>({
+      path: "plos",
+      options: { sort: { order: 1 } },
+    });
 
-  return phases.map((phase) => toEvaluationPhase(phase, plosByCode));
+  return (phases as unknown as PopulatedEvaluationPhase[]).map(
+    toEvaluationPhase,
+  );
 }

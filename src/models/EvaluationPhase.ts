@@ -4,6 +4,7 @@ import {
   models,
   type HydratedDocument,
   type Model,
+  type Types,
 } from "mongoose";
 
 type EvaluationPhase = {
@@ -11,7 +12,7 @@ type EvaluationPhase = {
   title: string;
   weightage: number;
   order: number;
-  plos: string[];
+  plos: Types.ObjectId[];
 };
 
 export type EvaluationPhaseDocument = HydratedDocument<EvaluationPhase>;
@@ -39,7 +40,8 @@ const EvaluationPhaseSchema = new Schema<EvaluationPhase>(
       unique: true,
     },
     plos: {
-      type: [String],
+      type: [Schema.Types.ObjectId],
+      ref: "Plo",
       default: [],
     },
   },
