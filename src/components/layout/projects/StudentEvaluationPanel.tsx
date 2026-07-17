@@ -88,6 +88,9 @@ export function StudentEvaluationPanel({
   const [savedEvaluations, setSavedEvaluations] = useState<
     Record<string, boolean>
   >({});
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [finalSaved, setFinalSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const selectedPhase =
     phases.find((phase) => phase.key === selectedPhaseKey) ?? phases[0];
   const selectedCriteria = selectedPhase?.plos ?? [];
@@ -113,6 +116,11 @@ export function StudentEvaluationPanel({
   const evaluationKey = `${selectedStudentName}-${selectedPhaseKey}`;
   const showErrors = attemptedSubmits[evaluationKey] ?? false;
   const saved = savedEvaluations[evaluationKey] ?? false;
+  const allEvaluationsComplete = students.every((student) =>
+    phases.every(
+      (phase) => getPhaseProgressForStudent(student, phase) === 100,
+    ),
+  );
 
   function getPhaseProgressForStudent(studentName: string, phase: EvaluationPhase) {
     return getCompletion(
@@ -141,10 +149,15 @@ export function StudentEvaluationPanel({
   }
 
   function updateEvaluation(updates: Partial<PhaseEvaluation>) {
+    if (finalSaved) {
+      return;
+    }
+
     setSavedEvaluations((current) => ({
       ...current,
       [evaluationKey]: false,
     }));
+    setSaveError("");
 
     setEvaluations((current) => {
       const currentEvaluation = getEvaluation(
@@ -194,24 +207,56 @@ export function StudentEvaluationPanel({
   }
 
   function handleSave() {
+    const attemptedKeys = students.reduce<Record<string, boolean>>(
+      (keys, student) => {
+        phases.forEach((phase) => {
+          keys[`${student}-${phase.key}`] = true;
+        });
+
+        return keys;
+      },
+      {},
+    );
+
     setAttemptedSubmits((current) => ({
       ...current,
-      [evaluationKey]: true,
+      ...attemptedKeys,
     }));
 
-    if ((phaseProgress[selectedPhaseKey] ?? 0) !== 100) {
+    if (!allEvaluationsComplete) {
+      setSaveError(
+        "Complete all PLO marks for every student and every phase before saving.",
+      );
       return;
     }
 
-    setSavedEvaluations((current) => ({
-      ...current,
-      [evaluationKey]: true,
-    }));
+    setSaveError("");
+    setShowConfirmDialog(true);
+  }
 
-    console.log("Student evaluation saved", {
-      studentName: selectedStudentName,
-      phase: selectedPhase,
-      evaluation: selectedEvaluation,
+  function confirmFinalSave() {
+    setSavedEvaluations((current) => {
+      const savedKeys = students.reduce<Record<string, boolean>>(
+        (keys, student) => {
+          phases.forEach((phase) => {
+            keys[`${student}-${phase.key}`] = true;
+          });
+
+          return keys;
+        },
+        {},
+      );
+
+      return {
+        ...current,
+        ...savedKeys,
+      };
+    });
+    setFinalSaved(true);
+    setShowConfirmDialog(false);
+
+    console.log("Project evaluation saved", {
+      evaluations,
     });
   }
 
@@ -224,7 +269,7 @@ export function StudentEvaluationPanel({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 caret-transparent">
       <EvaluationPhaseTabs
         phases={phases}
         selectedPhaseKey={selectedPhaseKey}
@@ -329,10 +374,11 @@ export function StudentEvaluationPanel({
                         name={`${selectedPhase.key}-${selectedStudentName}-${criterion.code}`}
                         value={marks}
                         checked={selectedEvaluation.ratings[criterion.code] === marks}
+                        disabled={finalSaved}
                         onChange={() => updateRating(criterion.code, marks)}
                         className="peer sr-only"
                       />
-                      <span className="flex h-9 items-center justify-center rounded-md border border-border px-2 text-sm font-semibold text-muted transition hover:border-accent hover:text-ink peer-checked:border-accent peer-checked:bg-accent-soft peer-checked:text-ink">
+                      <span className="flex h-9 items-center justify-center rounded-md border border-border px-2 text-sm font-semibold text-muted transition hover:border-accent hover:text-ink peer-checked:border-accent peer-checked:bg-accent-soft peer-checked:text-ink peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                         {marks}
                       </span>
                     </label>
@@ -351,10 +397,14 @@ export function StudentEvaluationPanel({
             <button
               type="button"
               onClick={handleSave}
-              className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2"
+              disabled={finalSaved}
+              className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted"
             >
-              Save {selectedPhase.title} evaluation
+              Save final evaluation
             </button>
+            {saveError ? (
+              <p className="text-sm font-medium text-danger">{saveError}</p>
+            ) : null}
             {saved ? (
               <p className="text-sm font-semibold text-accent">
                 Evaluation saved.
@@ -363,6 +413,36 @@ export function StudentEvaluationPanel({
           </div>
         </section>
       </form>
+
+      {showConfirmDialog ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <section className="w-full max-w-md rounded-lg border border-border bg-surface p-5 shadow-xl">
+            <h2 className="text-base font-semibold text-ink">
+              Save final evaluation?
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Once this evaluation is saved, the entered marks cannot be changed
+              again. Are you sure you want to continue?
+            </p>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setShowConfirmDialog(false)}
+                className="inline-flex h-10 items-center justify-center rounded-md border border-border px-4 text-sm font-semibold text-ink transition hover:bg-surface-muted"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmFinalSave}
+                className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover"
+              >
+                Yes, save
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }
