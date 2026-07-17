@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StudentEvaluationPanel } from "@/components/layout/projects/StudentEvaluationPanel";
-import { evaluationCriteria, evaluationPhases } from "@/constants/evaluation";
+import { getEvaluationPhasesWithPlos } from "@/services/evaluationService";
 import { getFacultyProjectById } from "@/services/projectService";
-
-const initialPhase = "Synopsis";
 
 type EvaluationPageProps = {
   params: Promise<{
@@ -14,13 +12,17 @@ type EvaluationPageProps = {
 
 export default async function EvaluationPage({ params }: EvaluationPageProps) {
   const { projectId } = await params;
-  const project = await getFacultyProjectById(projectId);
+  const [project, phases] = await Promise.all([
+    getFacultyProjectById(projectId),
+    getEvaluationPhasesWithPlos(),
+  ]);
 
   if (!project) {
     notFound();
   }
 
   const students = project.students;
+  const initialPhase = phases[0];
 
   return (
     <div className="space-y-6">
@@ -41,18 +43,25 @@ export default async function EvaluationPage({ params }: EvaluationPageProps) {
           </p>
         </div>
         <div className="rounded-lg border border-border bg-surface p-4 text-sm shadow-sm">
-          <p className="font-semibold text-ink">{initialPhase} evaluation</p>
+          <p className="font-semibold text-ink">
+            {initialPhase?.title ?? "Evaluation"}
+          </p>
           <p className="mt-1 text-muted">{students.length} members</p>
         </div>
       </section>
 
-      {students.length > 0 ? (
+      {students.length > 0 && initialPhase ? (
         <StudentEvaluationPanel
           students={students}
-          criteria={evaluationCriteria}
-          phases={evaluationPhases}
-          initialPhase={initialPhase}
+          phases={phases}
+          initialPhaseKey={initialPhase.key}
         />
+      ) : null}
+
+      {students.length > 0 && !initialPhase ? (
+        <section className="rounded-lg border border-border bg-surface p-5 text-sm text-muted shadow-sm">
+          No evaluation phases found.
+        </section>
       ) : null}
 
       {students.length === 0 ? (

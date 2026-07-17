@@ -1,16 +1,18 @@
+import type { EvaluationPhase } from "@/types/evaluation";
+
 type EvaluationPhaseTabsProps = {
-  phases: string[];
-  selectedPhase: string;
-  currentPhase: string;
+  phases: EvaluationPhase[];
+  selectedPhaseKey: string;
+  currentPhaseKey: string;
   progressByPhase: Record<string, number>;
-  isPhaseEnabled: (phase: string) => boolean;
-  onPhaseChange: (phase: string) => void;
+  isPhaseEnabled: (phaseKey: string) => boolean;
+  onPhaseChange: (phaseKey: string) => void;
 };
 
 export function EvaluationPhaseTabs({
   phases,
-  selectedPhase,
-  currentPhase,
+  selectedPhaseKey,
+  currentPhaseKey,
   progressByPhase,
   isPhaseEnabled,
   onPhaseChange,
@@ -18,17 +20,17 @@ export function EvaluationPhaseTabs({
   return (
     <section className="grid gap-4 md:grid-cols-4">
       {phases.map((phase) => {
-        const selected = phase === selectedPhase;
-        const current = phase === currentPhase;
-        const enabled = isPhaseEnabled(phase);
-        const progress = progressByPhase[phase] ?? 0;
+        const selected = phase.key === selectedPhaseKey;
+        const current = phase.key === currentPhaseKey;
+        const enabled = isPhaseEnabled(phase.key);
+        const progress = progressByPhase[phase.key] ?? 0;
 
         return (
           <button
-            key={phase}
+            key={phase.key}
             type="button"
             disabled={!enabled}
-            onClick={() => onPhaseChange(phase)}
+            onClick={() => onPhaseChange(phase.key)}
             className={`rounded-lg border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
               selected
                 ? "border-accent bg-accent-soft text-ink"
@@ -36,11 +38,11 @@ export function EvaluationPhaseTabs({
             }`}
           >
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold">{phase}</p>
+              <p className="text-sm font-semibold">{phase.title}</p>
               <span className="text-xs font-semibold">{progress}%</span>
             </div>
             <p className="mt-1 text-xs">
-              {current ? "Current phase" : enabled ? "Open" : "Locked"}
+              {current ? "Current phase" : enabled ? `${phase.weightage}%` : "Locked"}
             </p>
           </button>
         );
