@@ -3,6 +3,7 @@ import {
   EvaluationPhaseModel,
   type EvaluationPhaseDocument,
 } from "@/models/EvaluationPhase";
+import "@/models/Plo";
 import type { PloDocument } from "@/models/Plo";
 import type {
   EvaluationPhase,

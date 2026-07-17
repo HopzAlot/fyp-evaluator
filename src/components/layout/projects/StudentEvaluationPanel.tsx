@@ -12,8 +12,6 @@ type StudentEvaluationPanelProps = {
 
 type PhaseEvaluation = {
   ratings: Record<string, number>;
-  remarks: string;
-  recommendation: string;
 };
 
 type EvaluationState = Record<string, Record<string, PhaseEvaluation>>;
@@ -23,8 +21,6 @@ const markOptions = [0, 1, 2, 3, 4, 5];
 function createEmptyEvaluation(): PhaseEvaluation {
   return {
     ratings: {},
-    remarks: "",
-    recommendation: "",
   };
 }
 
@@ -228,7 +224,7 @@ export function StudentEvaluationPanel({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <EvaluationPhaseTabs
         phases={phases}
         selectedPhaseKey={selectedPhaseKey}
@@ -238,14 +234,14 @@ export function StudentEvaluationPanel({
         onPhaseChange={handlePhaseChange}
       />
 
-      <form className="grid gap-6 xl:grid-cols-[20rem_1fr]">
+      <form className="grid gap-4 xl:grid-cols-[17rem_1fr]">
         <aside>
-          <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-            <h2 className="text-base font-semibold text-ink">Students</h2>
-            <p className="mt-1 text-sm text-muted">
+          <section className="rounded-md border border-border bg-surface p-4 shadow-sm">
+            <h2 className="text-sm font-semibold text-ink">Students</h2>
+            <p className="mt-1 text-xs text-muted">
               Overall evaluation progress
             </p>
-            <div className="mt-4 space-y-3">
+            <div className="mt-3 space-y-2">
               {students.map((student) => {
                 const active = student === selectedStudentName;
                 const progress = getOverallStudentProgress(
@@ -259,22 +255,22 @@ export function StudentEvaluationPanel({
                     key={student}
                     type="button"
                     onClick={() => handleStudentChange(student)}
-                    className={`w-full rounded-md border px-3 py-3 text-left transition ${
+                    className={`w-full rounded-md border px-3 py-2.5 text-left transition ${
                       active
                         ? "border-accent bg-accent-soft"
                         : "border-border bg-background hover:border-accent"
                     }`}
                   >
-                    <span className="block text-sm font-semibold text-ink">
+                    <span className="block truncate text-sm font-semibold text-ink">
                       {student}
                     </span>
-                    <span className="mt-2 block h-2 overflow-hidden rounded-full bg-surface-muted">
+                    <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-surface-muted">
                       <span
                         className="block h-full rounded-full bg-accent"
                         style={{ width: `${progress}%` }}
                       />
                     </span>
-                    <span className="mt-2 block text-xs text-muted">
+                    <span className="mt-1.5 block text-xs text-muted">
                       {progress}% overall
                     </span>
                   </button>
@@ -284,22 +280,23 @@ export function StudentEvaluationPanel({
           </section>
         </aside>
 
-        <section className="space-y-4">
-          <div className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-            <p className="text-sm font-semibold text-primary">
-              {selectedPhase.title}
-            </p>
-            <h2 className="mt-1 text-lg font-semibold text-ink">
-              {selectedStudentName}
-            </h2>
-            <p className="mt-2 text-sm text-muted">
-              Mark each PLO from 0 to 5. Criteria guidance is shown below each
-              question.
+        <section className="space-y-3">
+          <div className="flex flex-col gap-2 rounded-md border border-border bg-surface px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase text-primary">
+                {selectedPhase.title}
+              </p>
+              <h2 className="mt-1 text-base font-semibold text-ink">
+                {selectedStudentName}
+              </h2>
+            </div>
+            <p className="text-xs text-muted">
+              Mark each PLO from 0 to 5
             </p>
           </div>
 
           {selectedCriteria.length === 0 ? (
-            <section className="rounded-lg border border-border bg-surface p-5 text-sm text-muted shadow-sm">
+            <section className="rounded-md border border-border bg-surface p-4 text-sm text-muted shadow-sm">
               No PLOs configured for this phase yet.
             </section>
           ) : null}
@@ -311,25 +308,20 @@ export function StudentEvaluationPanel({
             return (
               <fieldset
                 key={`${selectedPhase.key}-${selectedStudentName}-${criterion.code}`}
-                className={`rounded-lg border bg-surface p-5 shadow-sm ${
+                className={`rounded-md border bg-surface px-4 py-3 shadow-sm ${
                   missingRating ? "border-danger" : "border-border"
                 }`}
               >
-                <legend className="flex w-full items-start gap-3 text-base font-semibold text-ink">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-muted text-sm">
+                <legend className="flex w-full items-center gap-3 text-base font-semibold text-ink">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-muted text-xs">
                     {index + 1}
                   </span>
-                  <span>
-                    <span className="block text-sm font-semibold text-primary">
-                      {criterion.code}
-                    </span>
-                    {criterion.title}
-                  </span>
+                  <span className="leading-6">{criterion.title}</span>
                 </legend>
 
                 <MarkingCriteria criterion={criterion} />
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-6">
+                <div className="mt-3 grid grid-cols-6 gap-2">
                   {markOptions.map((marks) => (
                     <label key={marks} className="cursor-pointer">
                       <input
@@ -340,7 +332,7 @@ export function StudentEvaluationPanel({
                         onChange={() => updateRating(criterion.code, marks)}
                         className="peer sr-only"
                       />
-                      <span className="flex items-center justify-center rounded-md border border-border px-3 py-2 text-sm font-semibold text-muted transition hover:border-accent hover:text-ink peer-checked:border-accent peer-checked:bg-accent-soft peer-checked:text-ink">
+                      <span className="flex h-9 items-center justify-center rounded-md border border-border px-2 text-sm font-semibold text-muted transition hover:border-accent hover:text-ink peer-checked:border-accent peer-checked:bg-accent-soft peer-checked:text-ink">
                         {marks}
                       </span>
                     </label>
@@ -355,63 +347,20 @@ export function StudentEvaluationPanel({
             );
           })}
 
-          <section className="rounded-lg border border-border bg-surface p-5 shadow-sm">
-            <label
-              htmlFor="remarks"
-              className="text-base font-semibold text-ink"
+          <div className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4 shadow-sm sm:flex-row sm:items-center">
+            <button
+              type="button"
+              onClick={handleSave}
+              className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2"
             >
-              Remarks for {selectedStudentName}
-            </label>
-            <textarea
-              id="remarks"
-              name={`${selectedPhase.key}-${selectedStudentName}-remarks`}
-              rows={5}
-              value={selectedEvaluation.remarks}
-              onChange={(event) =>
-                updateEvaluation({ remarks: event.target.value })
-              }
-              className="mt-4 w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm text-ink outline-none transition placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/10"
-              placeholder="Add student-specific evaluation remarks"
-            />
-
-            <label
-              htmlFor="recommendation"
-              className="mt-5 block text-base font-semibold text-ink"
-            >
-              Recommendation
-            </label>
-            <select
-              id="recommendation"
-              name={`${selectedPhase.key}-${selectedStudentName}-recommendation`}
-              value={selectedEvaluation.recommendation}
-              onChange={(event) =>
-                updateEvaluation({ recommendation: event.target.value })
-              }
-              className="select-field mt-4 h-11 w-full rounded-md border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
-            >
-              <option value="" disabled>
-                Select decision
-              </option>
-              <option>Approved</option>
-              <option>Approved with changes</option>
-              <option>Redo</option>
-            </select>
-
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <button
-                type="button"
-                onClick={handleSave}
-                className="inline-flex h-11 items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-white transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2"
-              >
-                Save {selectedPhase.title} evaluation
-              </button>
-              {saved ? (
-                <p className="text-sm font-semibold text-accent">
-                  Evaluation saved.
-                </p>
-              ) : null}
-            </div>
-          </section>
+              Save {selectedPhase.title} evaluation
+            </button>
+            {saved ? (
+              <p className="text-sm font-semibold text-accent">
+                Evaluation saved.
+              </p>
+            ) : null}
+          </div>
         </section>
       </form>
     </div>
@@ -426,11 +375,11 @@ function MarkingCriteria({ criterion }: { criterion: EvaluationPlo }) {
   }
 
   return (
-    <div className="mt-4 rounded-md border border-border bg-surface-muted p-3">
+    <div className="mt-3 border-l-2 border-border pl-3">
       <p className="text-xs font-semibold uppercase text-muted">
         Marking criteria
       </p>
-      <div className="mt-2 grid gap-2">
+      <div className="mt-2 grid gap-1.5">
         {lines.map((line) => {
           const [range, ...descriptionParts] = line.split(":");
           const description = descriptionParts.join(":").trim();
@@ -438,10 +387,10 @@ function MarkingCriteria({ criterion }: { criterion: EvaluationPlo }) {
           return (
             <div
               key={line}
-              className="rounded-md bg-surface px-3 py-2 text-sm text-muted"
+              className="grid gap-1 rounded-md bg-surface-muted px-2.5 py-2 text-xs text-muted sm:grid-cols-[3.5rem_1fr]"
             >
-              <span className="font-semibold text-ink">{range.trim()}:</span>{" "}
-              {description || "Criteria not added yet."}
+              <span className="font-semibold text-ink">{range.trim()}</span>
+              <span>{description || "Criteria not added yet."}</span>
             </div>
           );
         })}
