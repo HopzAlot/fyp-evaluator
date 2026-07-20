@@ -1,12 +1,12 @@
 import { isValidObjectId, Types } from "mongoose";
 import { connectDatabase } from "@/lib/db/mongoose";
-import { EvaluationModel } from "@/models/Evaluation";
+import { EvaluationModel, type EvaluationDocument } from "@/models/Evaluation";
 import {
   EvaluationPhaseModel,
   type EvaluationPhaseDocument,
 } from "@/models/EvaluationPhase";
-import "@/models/Plo";
-import type { PloDocument } from "@/models/Plo";
+import { PloModel, type PloDocument } from "@/models/Plo";
+import { ProjectModel, type ProjectDocument } from "@/models/Project";
 import type {
   EvaluationPhase,
   EvaluationPlo,
@@ -17,6 +17,37 @@ import type {
 type PopulatedEvaluationPhase = Omit<EvaluationPhaseDocument, "plos"> & {
   plos: PloDocument[];
 };
+
+type EvaluationExportPhase = EvaluationPhase & {
+  ploIds: Set<string>;
+};
+
+function average(values: number[]) {
+  if (values.length === 0) {
+    return null;
+  }
+
+  return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function escapeHtml(value: string | number) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function formatExportNumber(value: number | null) {
+  if (value === null) {
+    return "";
+  }
+
+  return Number.isInteger(value)
+    ? String(value)
+    : value.toFixed(6).replace(/\.?0+$/, "");
+}
 
 function toEvaluationPlo(plo: PloDocument): EvaluationPlo {
   return {
@@ -204,4 +235,148 @@ export async function savePhaseEvaluation(
   return {
     evaluationId: evaluation._id.toString(),
   };
+}
+
+function getStudentNames(project: ProjectDocument) {
+  return project.students.map((student) => student.trim()).filter(Boolean);
+}
+
+function getStudentFromEvaluation(
+  evaluation: EvaluationDocument,
+  studentName: string,
+) {
+  return evaluation.students.find(
+    (student) =>
+      student.studentName.trim().toLowerCase() === studentName.toLowerCase(),
+  );
+}
+
+export async function buildEvaluationResultsExportHtml() {
+  await connectDatabase();
+
+  const [projects, phases, plos, evaluations] = await Promise.all([
+    ProjectModel.find().sort({ title: 1 }),
+    EvaluationPhaseModel.find()
+      .sort({ order: 1 })
+      .populate<{ plos: PloDocument[] }>({
+        path: "plos",
+        options: { sort: { order: 1 } },
+      }),
+    PloModel.find().sort({ order: 1 }),
+    EvaluationModel.find(),
+  ]);
+  const exportPlos = plos.map(toEvaluationPlo);
+  const exportPhases: EvaluationExportPhase[] = (
+    phases as unknown as PopulatedEvaluationPhase[]
+  ).map((phase) => {
+    const mappedPhase = toEvaluationPhase(phase);
+
+    return {
+      ...mappedPhase,
+      ploIds: new Set(mappedPhase.plos.map((plo) => plo.id)),
+    };
+  });
+  const rows: string[] = [];
+
+  for (const project of projects) {
+    const projectEvaluations = evaluations.filter(
+      (evaluation) => evaluation.projectId.toString() === project._id.toString(),
+    );
+    const studentNames = Array.from(
+      new Set([
+        ...getStudentNames(project),
+        ...projectEvaluations.flatMap((evaluation) =>
+          evaluation.students.map((student) => student.studentName),
+        ),
+      ]),
+    );
+
+    rows.push(
+      `<tr class="project"><td colspan="14">${escapeHtml(project.title)}</td></tr>`,
+    );
+
+    if (studentNames.length === 0) {
+      rows.push('<tr><td colspan="14">No students found</td></tr>');
+      rows.push('<tr class="spacer"><td colspan="14"></td></tr>');
+      continue;
+    }
+
+    for (const studentName of studentNames) {
+      rows.push(
+        `<tr class="student"><td>${escapeHtml(studentName)}</td>${exportPlos
+          .map((plo) => `<td>${escapeHtml(plo.code)}</td>`)
+          .join("")}<td>Marks</td></tr>`,
+      );
+
+      for (const phase of exportPhases) {
+        const phaseEvaluations = projectEvaluations.filter(
+          (evaluation) => evaluation.phaseId.toString() === phase.id,
+        );
+        const phaseCells = exportPlos
+          .map((plo) => {
+            if (!phase.ploIds.has(plo.id)) {
+              return "<td></td>";
+            }
+
+            const ploAverage = average(
+              phaseEvaluations.flatMap((evaluation) => {
+                const student = getStudentFromEvaluation(evaluation, studentName);
+                const score = student?.evaluations.find(
+                  (studentScore) => studentScore.ploId.toString() === plo.id,
+                );
+
+                return score ? [score.obtainedMarks] : [];
+              }),
+            );
+
+            return ploAverage === null
+              ? "<td></td>"
+              : `<td class="marked">${formatExportNumber(ploAverage)}</td>`;
+          })
+          .join("");
+        const phaseWeightedScores = phaseEvaluations.flatMap((evaluation) => {
+          const student = getStudentFromEvaluation(evaluation, studentName);
+
+          if (!student || phase.plos.length === 0) {
+            return [];
+          }
+
+          const obtained = student.evaluations.reduce(
+            (total, score) => total + score.obtainedMarks,
+            0,
+          );
+          const maximum = phase.plos.length * 5;
+
+          return [(obtained / maximum) * phase.weightage];
+        });
+
+        rows.push(
+          `<tr><td class="phase">${escapeHtml(`${phase.title} (${phase.weightage}%)`)}</td>${phaseCells}<td>${formatExportNumber(
+            average(phaseWeightedScores),
+          )}</td></tr>`,
+        );
+      }
+
+      rows.push('<tr class="spacer"><td colspan="14"></td></tr>');
+    }
+  }
+
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12px; }
+      td { border: 1px solid #111827; min-width: 72px; padding: 4px 6px; }
+      .project td { background: #e5e7eb; font-size: 14px; font-weight: 700; }
+      .student td { font-weight: 700; }
+      .phase { font-weight: 700; min-width: 240px; }
+      .marked { background: #082967; color: #ffffff; }
+      .spacer td { border: 0; height: 18px; }
+    </style>
+  </head>
+  <body>
+    <table>${rows.join("")}</table>
+  </body>
+</html>`;
 }

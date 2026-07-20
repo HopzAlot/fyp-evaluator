@@ -25,6 +25,7 @@ export function AdminProjectsManager({
   );
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
@@ -51,6 +52,34 @@ export function AdminProjectsManager({
     setError("");
     setMessage("");
     refreshRoute();
+  };
+
+  const exportEvaluationResults = async () => {
+    setError("");
+    setMessage("");
+    setExporting(true);
+
+    const response = await fetch("/api/admin/projects/export-evaluations");
+
+    if (!response.ok) {
+      const data = (await response.json()) as { message?: string };
+      setError(data.message ?? "Unable to export evaluation results");
+      setExporting(false);
+      return;
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "fyp-evaluation-results.xls";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    setExporting(false);
+    setMessage("Evaluation results exported successfully.");
   };
 
   const toggleProject = (projectId: string) => {
@@ -351,6 +380,15 @@ export function AdminProjectsManager({
             onClick={refreshProjects}
           >
             Refresh
+          </Button>
+          <Button
+            type="button"
+            loading={exporting}
+            loadingText="Exporting"
+            onClick={exportEvaluationResults}
+            className="bg-accent hover:bg-accent"
+          >
+            Export evaluation results
           </Button>
           <button
             type="button"
