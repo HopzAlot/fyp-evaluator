@@ -2,9 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { EvaluationPhaseTabs } from "@/components/layout/projects/EvaluationPhaseTabs";
-import type { EvaluationPhase, EvaluationPlo } from "@/types/evaluation";
+import type {
+  EvaluationPhase,
+  EvaluationPlo,
+  SaveProjectEvaluationRequest,
+} from "@/types/evaluation";
 
 type StudentEvaluationPanelProps = {
+  projectId: string;
   students: string[];
   phases: EvaluationPhase[];
   initialPhaseKey: string;
@@ -75,6 +80,7 @@ function formatMarkingCriteria(description: string) {
 }
 
 export function StudentEvaluationPanel({
+  projectId,
   students,
   phases,
   initialPhaseKey,
@@ -85,12 +91,12 @@ export function StudentEvaluationPanel({
   const [attemptedSubmits, setAttemptedSubmits] = useState<
     Record<string, boolean>
   >({});
-  const [savedEvaluations, setSavedEvaluations] = useState<
-    Record<string, boolean>
-  >({});
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [finalSaved, setFinalSaved] = useState(false);
+  const [savedPhaseKeys, setSavedPhaseKeys] = useState<Record<string, boolean>>(
+    {},
+  );
   const [saveError, setSaveError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const selectedPhase =
     phases.find((phase) => phase.key === selectedPhaseKey) ?? phases[0];
   const selectedCriteria = selectedPhase?.plos ?? [];
@@ -115,11 +121,9 @@ export function StudentEvaluationPanel({
 
   const evaluationKey = `${selectedStudentName}-${selectedPhaseKey}`;
   const showErrors = attemptedSubmits[evaluationKey] ?? false;
-  const saved = savedEvaluations[evaluationKey] ?? false;
-  const allEvaluationsComplete = students.every((student) =>
-    phases.every(
-      (phase) => getPhaseProgressForStudent(student, phase) === 100,
-    ),
+  const saved = savedPhaseKeys[selectedPhaseKey] ?? false;
+  const selectedPhaseComplete = students.every(
+    (student) => getPhaseProgressForStudent(student, selectedPhase) === 100,
   );
 
   function getPhaseProgressForStudent(studentName: string, phase: EvaluationPhase) {
@@ -149,14 +153,10 @@ export function StudentEvaluationPanel({
   }
 
   function updateEvaluation(updates: Partial<PhaseEvaluation>) {
-    if (finalSaved) {
+    if (savedPhaseKeys[selectedPhaseKey]) {
       return;
     }
 
-    setSavedEvaluations((current) => ({
-      ...current,
-      [evaluationKey]: false,
-    }));
     setSaveError("");
 
     setEvaluations((current) => {
@@ -209,9 +209,7 @@ export function StudentEvaluationPanel({
   function handleSave() {
     const attemptedKeys = students.reduce<Record<string, boolean>>(
       (keys, student) => {
-        phases.forEach((phase) => {
-          keys[`${student}-${phase.key}`] = true;
-        });
+        keys[`${student}-${selectedPhaseKey}`] = true;
 
         return keys;
       },
@@ -223,9 +221,9 @@ export function StudentEvaluationPanel({
       ...attemptedKeys,
     }));
 
-    if (!allEvaluationsComplete) {
+    if (!selectedPhaseComplete) {
       setSaveError(
-        "Complete all PLO marks for every student and every phase before saving.",
+        "Complete all PLO marks for every student in this phase before saving.",
       );
       return;
     }
@@ -234,28 +232,63 @@ export function StudentEvaluationPanel({
     setShowConfirmDialog(true);
   }
 
-  function confirmFinalSave() {
-    setSavedEvaluations((current) => {
-      const savedKeys = students.reduce<Record<string, boolean>>(
-        (keys, student) => {
-          phases.forEach((phase) => {
-            keys[`${student}-${phase.key}`] = true;
-          });
+  function buildEvaluationPayload(): SaveProjectEvaluationRequest {
+    return {
+      phases: [
+        {
+          phaseId: selectedPhase.id,
+          students: students.map((studentName) => {
+            const evaluation = getEvaluation(
+              evaluations,
+              studentName,
+              selectedPhase.key,
+            );
+            const phaseEvaluations = selectedPhase.plos.map((plo) => ({
+              ploId: plo.id,
+              obtainedMarks: evaluation.ratings[plo.code],
+            }));
 
-          return keys;
+            return {
+              studentName,
+              evaluations: phaseEvaluations,
+              totalMarks: phaseEvaluations.reduce(
+                (total, score) => total + score.obtainedMarks,
+                0,
+              ),
+            };
+          }),
         },
-        {},
-      );
+      ],
+    };
+  }
 
-      return {
-        ...current,
-        ...savedKeys,
-      };
+  async function confirmPhaseSave() {
+    setIsSaving(true);
+    setSaveError("");
+
+    const response = await fetch(`/api/faculty/projects/${projectId}/evaluations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(buildEvaluationPayload()),
     });
-    setFinalSaved(true);
+    const data = (await response.json()) as { message?: string };
+
+    setIsSaving(false);
+
+    if (!response.ok) {
+      setSaveError(data.message ?? "Unable to save evaluation");
+      setShowConfirmDialog(false);
+      return;
+    }
+
+    setSavedPhaseKeys((current) => ({
+      ...current,
+      [selectedPhaseKey]: true,
+    }));
     setShowConfirmDialog(false);
 
-    console.log("Project evaluation saved", {
+    console.log("Phase evaluation saved", {
+      phaseKey: selectedPhaseKey,
       evaluations,
     });
   }
@@ -374,7 +407,7 @@ export function StudentEvaluationPanel({
                         name={`${selectedPhase.key}-${selectedStudentName}-${criterion.code}`}
                         value={marks}
                         checked={selectedEvaluation.ratings[criterion.code] === marks}
-                        disabled={finalSaved}
+                        disabled={saved}
                         onChange={() => updateRating(criterion.code, marks)}
                         className="peer sr-only"
                       />
@@ -397,10 +430,10 @@ export function StudentEvaluationPanel({
             <button
               type="button"
               onClick={handleSave}
-              disabled={finalSaved}
+              disabled={saved}
               className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted"
             >
-              Save final evaluation
+              Save {selectedPhase.title}
             </button>
             {saveError ? (
               <p className="text-sm font-medium text-danger">{saveError}</p>
@@ -418,15 +451,16 @@ export function StudentEvaluationPanel({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <section className="w-full max-w-md rounded-lg border border-border bg-surface p-5 shadow-xl">
             <h2 className="text-base font-semibold text-ink">
-              Save final evaluation?
+              Save {selectedPhase.title}?
             </h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              Once this evaluation is saved, the entered marks cannot be changed
-              again. Are you sure you want to continue?
+              Once this phase is saved, the entered marks for this phase cannot
+              be changed again. Are you sure you want to continue?
             </p>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
                 type="button"
+                disabled={isSaving}
                 onClick={() => setShowConfirmDialog(false)}
                 className="inline-flex h-10 items-center justify-center rounded-md border border-border px-4 text-sm font-semibold text-ink transition hover:bg-surface-muted"
               >
@@ -434,10 +468,11 @@ export function StudentEvaluationPanel({
               </button>
               <button
                 type="button"
-                onClick={confirmFinalSave}
-                className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover"
+                disabled={isSaving}
+                onClick={confirmPhaseSave}
+                className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-muted"
               >
-                Yes, save
+                {isSaving ? "Saving..." : "Yes, save"}
               </button>
             </div>
           </section>

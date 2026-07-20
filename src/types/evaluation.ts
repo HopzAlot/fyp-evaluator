@@ -14,3 +14,23 @@ export type EvaluationPhase = {
   order: number;
   plos: EvaluationPlo[];
 };
+
+export type EvaluationScoreInput = {
+  ploId: string;
+  obtainedMarks: number;
+};
+
+export type EvaluationStudentInput = {
+  studentName: string;
+  evaluations: EvaluationScoreInput[];
+  totalMarks: number;
+};
+
+export type EvaluationPhaseSubmission = {
+  phaseId: string;
+  students: EvaluationStudentInput[];
+};
+
+export type SaveProjectEvaluationRequest = {
+  phases: EvaluationPhaseSubmission[];
+};

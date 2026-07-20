@@ -52,6 +52,7 @@ export default async function EvaluationPage({ params }: EvaluationPageProps) {
 
       {students.length > 0 && initialPhase ? (
         <StudentEvaluationPanel
+          projectId={project.id}
           students={students}
           phases={phases}
           initialPhaseKey={initialPhase.key}
