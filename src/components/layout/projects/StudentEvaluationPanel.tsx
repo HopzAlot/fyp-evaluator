@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EvaluationPhaseTabs } from "@/components/layout/projects/EvaluationPhaseTabs";
 import type {
   EvaluationPhase,
@@ -22,6 +22,8 @@ type PhaseEvaluation = {
 type EvaluationState = Record<string, Record<string, PhaseEvaluation>>;
 
 const markOptions = [0, 1, 2, 3, 4, 5];
+const leaveEvaluationMessage =
+  "You have unsaved evaluation marks. Are you sure you want to leave this page?";
 
 function createEmptyEvaluation(): PhaseEvaluation {
   return {
@@ -97,6 +99,7 @@ export function StudentEvaluationPanel({
   );
   const [saveError, setSaveError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const allowBackNavigationRef = useRef(false);
   const selectedPhase =
     phases.find((phase) => phase.key === selectedPhaseKey) ?? phases[0];
   const selectedCriteria = selectedPhase?.plos ?? [];
@@ -122,9 +125,90 @@ export function StudentEvaluationPanel({
   const evaluationKey = `${selectedStudentName}-${selectedPhaseKey}`;
   const showErrors = attemptedSubmits[evaluationKey] ?? false;
   const saved = savedPhaseKeys[selectedPhaseKey] ?? false;
+  const hasUnsavedEvaluationChanges = useMemo(
+    () =>
+      Object.values(evaluations).some((phaseEvaluations) =>
+        Object.entries(phaseEvaluations).some(
+          ([phaseKey, evaluation]) =>
+            !savedPhaseKeys[phaseKey] &&
+            Object.keys(evaluation.ratings).length > 0,
+        ),
+      ),
+    [evaluations, savedPhaseKeys],
+  );
   const selectedPhaseComplete = students.every(
     (student) => getPhaseProgressForStudent(student, selectedPhase) === 100,
   );
+
+  useEffect(() => {
+    if (!hasUnsavedEvaluationChanges) {
+      return;
+    }
+
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+
+    function handleLinkClick(event: MouseEvent) {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      const target = event.target as Element | null;
+      const link = target?.closest("a[href]");
+
+      if (
+        !(link instanceof HTMLAnchorElement) ||
+        link.target === "_blank" ||
+        link.hasAttribute("download")
+      ) {
+        return;
+      }
+
+      const nextUrl = new URL(link.href);
+
+      if (nextUrl.href === window.location.href) {
+        return;
+      }
+
+      if (!window.confirm(leaveEvaluationMessage)) {
+        event.preventDefault();
+      }
+    }
+
+    function handlePopState() {
+      if (allowBackNavigationRef.current) {
+        return;
+      }
+
+      if (window.confirm(leaveEvaluationMessage)) {
+        allowBackNavigationRef.current = true;
+        window.history.back();
+        return;
+      }
+
+      window.history.pushState(null, "", window.location.href);
+    }
+
+    window.history.pushState(null, "", window.location.href);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("click", handleLinkClick, true);
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("click", handleLinkClick, true);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [hasUnsavedEvaluationChanges]);
 
   function getPhaseProgressForStudent(studentName: string, phase: EvaluationPhase) {
     return getCompletion(
