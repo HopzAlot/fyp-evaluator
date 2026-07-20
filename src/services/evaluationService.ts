@@ -10,6 +10,7 @@ import type { PloDocument } from "@/models/Plo";
 import type {
   EvaluationPhase,
   EvaluationPlo,
+  SavedPhaseEvaluation,
   SaveProjectEvaluationRequest,
 } from "@/types/evaluation";
 
@@ -53,6 +54,36 @@ export async function getEvaluationPhasesWithPlos() {
   return (phases as unknown as PopulatedEvaluationPhase[]).map(
     toEvaluationPhase,
   );
+}
+
+export async function getSavedProjectEvaluations(
+  projectId: string,
+  facultyId: string,
+): Promise<SavedPhaseEvaluation[]> {
+  if (!isValidObjectId(projectId) || !isValidObjectId(facultyId)) {
+    return [];
+  }
+
+  await connectDatabase();
+
+  const evaluations = await EvaluationModel.find({
+    projectId: new Types.ObjectId(projectId),
+    facultyId: new Types.ObjectId(facultyId),
+  }).sort({ submittedAt: 1 });
+
+  return evaluations.map((evaluation) => ({
+    id: evaluation._id.toString(),
+    phaseId: evaluation.phaseId.toString(),
+    submittedAt: evaluation.submittedAt.toISOString(),
+    students: evaluation.students.map((student) => ({
+      studentName: student.studentName,
+      evaluations: student.evaluations.map((score) => ({
+        ploId: score.ploId.toString(),
+        obtainedMarks: score.obtainedMarks,
+      })),
+      totalMarks: student.totalMarks,
+    })),
+  }));
 }
 
 function isMark(value: unknown): value is number {

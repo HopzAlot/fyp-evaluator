@@ -5,6 +5,7 @@ import { EvaluationPhaseTabs } from "@/components/layout/projects/EvaluationPhas
 import type {
   EvaluationPhase,
   EvaluationPlo,
+  SavedPhaseEvaluation,
   SaveProjectEvaluationRequest,
 } from "@/types/evaluation";
 
@@ -13,6 +14,7 @@ type StudentEvaluationPanelProps = {
   students: string[];
   phases: EvaluationPhase[];
   initialPhaseKey: string;
+  savedEvaluations: SavedPhaseEvaluation[];
 };
 
 type PhaseEvaluation = {
@@ -81,21 +83,80 @@ function formatMarkingCriteria(description: string) {
     .filter(Boolean);
 }
 
+function createInitialEvaluations(
+  savedEvaluations: SavedPhaseEvaluation[],
+  phases: EvaluationPhase[],
+) {
+  const phaseById = new Map(phases.map((phase) => [phase.id, phase]));
+
+  return savedEvaluations.reduce<EvaluationState>((state, savedEvaluation) => {
+    const phase = phaseById.get(savedEvaluation.phaseId);
+
+    if (!phase) {
+      return state;
+    }
+
+    const ploCodeById = new Map(phase.plos.map((plo) => [plo.id, plo.code]));
+
+    savedEvaluation.students.forEach((student) => {
+      state[student.studentName] = {
+        ...state[student.studentName],
+        [phase.key]: {
+          ratings: Object.fromEntries(
+            student.evaluations
+              .map((score) => {
+                const ploCode = ploCodeById.get(score.ploId);
+
+                return ploCode ? [ploCode, score.obtainedMarks] : null;
+              })
+              .filter((score): score is [string, number] => Boolean(score)),
+          ),
+        },
+      };
+    });
+
+    return state;
+  }, {});
+}
+
+function createInitialSavedPhaseKeys(
+  savedEvaluations: SavedPhaseEvaluation[],
+  phases: EvaluationPhase[],
+) {
+  const phaseKeyById = new Map(phases.map((phase) => [phase.id, phase.key]));
+
+  return savedEvaluations.reduce<Record<string, boolean>>(
+    (savedKeys, savedEvaluation) => {
+      const phaseKey = phaseKeyById.get(savedEvaluation.phaseId);
+
+      if (phaseKey) {
+        savedKeys[phaseKey] = true;
+      }
+
+      return savedKeys;
+    },
+    {},
+  );
+}
+
 export function StudentEvaluationPanel({
   projectId,
   students,
   phases,
   initialPhaseKey,
+  savedEvaluations,
 }: StudentEvaluationPanelProps) {
   const [selectedPhaseKey, setSelectedPhaseKey] = useState(initialPhaseKey);
   const [selectedStudentName, setSelectedStudentName] = useState(students[0] ?? "");
-  const [evaluations, setEvaluations] = useState<EvaluationState>({});
+  const [evaluations, setEvaluations] = useState<EvaluationState>(() =>
+    createInitialEvaluations(savedEvaluations, phases),
+  );
   const [attemptedSubmits, setAttemptedSubmits] = useState<
     Record<string, boolean>
   >({});
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [savedPhaseKeys, setSavedPhaseKeys] = useState<Record<string, boolean>>(
-    {},
+    () => createInitialSavedPhaseKeys(savedEvaluations, phases),
   );
   const [saveError, setSaveError] = useState("");
   const [isSaving, setIsSaving] = useState(false);

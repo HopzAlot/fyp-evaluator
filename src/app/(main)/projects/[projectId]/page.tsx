@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StudentEvaluationPanel } from "@/components/layout/projects/StudentEvaluationPanel";
-import { getEvaluationPhasesWithPlos } from "@/services/evaluationService";
+import { verifyAccessToken, verifyRefreshToken } from "@/lib/auth/jwt";
+import { getAuthTokens } from "@/lib/auth/session";
+import {
+  getEvaluationPhasesWithPlos,
+  getSavedProjectEvaluations,
+} from "@/services/evaluationService";
 import { getFacultyProjectById } from "@/services/projectService";
 
 type EvaluationPageProps = {
@@ -10,17 +15,30 @@ type EvaluationPageProps = {
   }>;
 };
 
+async function getCurrentFacultyId() {
+  const { accessToken, refreshToken } = await getAuthTokens();
+  const payload =
+    (accessToken ? verifyAccessToken(accessToken) : null) ??
+    (refreshToken ? verifyRefreshToken(refreshToken) : null);
+
+  return payload?.role === "faculty" ? payload.userId : "";
+}
+
 export default async function EvaluationPage({ params }: EvaluationPageProps) {
   const { projectId } = await params;
-  const [project, phases] = await Promise.all([
+  const [project, phases, facultyId] = await Promise.all([
     getFacultyProjectById(projectId),
     getEvaluationPhasesWithPlos(),
+    getCurrentFacultyId(),
   ]);
 
   if (!project) {
     notFound();
   }
 
+  const savedEvaluations = facultyId
+    ? await getSavedProjectEvaluations(project.id, facultyId)
+    : [];
   const students = project.students;
   const initialPhase = phases[0];
 
@@ -56,6 +74,7 @@ export default async function EvaluationPage({ params }: EvaluationPageProps) {
           students={students}
           phases={phases}
           initialPhaseKey={initialPhase.key}
+          savedEvaluations={savedEvaluations}
         />
       ) : null}
 

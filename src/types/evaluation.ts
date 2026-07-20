@@ -34,3 +34,8 @@ export type EvaluationPhaseSubmission = {
 export type SaveProjectEvaluationRequest = {
   phases: EvaluationPhaseSubmission[];
 };
+
+export type SavedPhaseEvaluation = EvaluationPhaseSubmission & {
+  id: string;
+  submittedAt: string;
+};
