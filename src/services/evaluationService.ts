@@ -286,7 +286,7 @@ export async function buildEvaluationResultsExportHtml() {
           evaluation.students.map((student) => student.studentName),
         ),
       ),
-    );
+    ).sort((firstName, secondName) => firstName.localeCompare(secondName));
 
     if (studentNames.length === 0) {
       continue;
