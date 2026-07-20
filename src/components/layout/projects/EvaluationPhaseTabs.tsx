@@ -3,7 +3,6 @@ import type { EvaluationPhase } from "@/types/evaluation";
 type EvaluationPhaseTabsProps = {
   phases: EvaluationPhase[];
   selectedPhaseKey: string;
-  currentPhaseKey: string;
   progressByPhase: Record<string, number>;
   isPhaseEnabled: (phaseKey: string) => boolean;
   onPhaseChange: (phaseKey: string) => void;
@@ -12,7 +11,6 @@ type EvaluationPhaseTabsProps = {
 export function EvaluationPhaseTabs({
   phases,
   selectedPhaseKey,
-  currentPhaseKey,
   progressByPhase,
   isPhaseEnabled,
   onPhaseChange,
@@ -21,7 +19,6 @@ export function EvaluationPhaseTabs({
     <section className="grid gap-3 md:grid-cols-4">
       {phases.map((phase) => {
         const selected = phase.key === selectedPhaseKey;
-        const current = phase.key === currentPhaseKey;
         const enabled = isPhaseEnabled(phase.key);
         const progress = progressByPhase[phase.key] ?? 0;
 
@@ -43,9 +40,7 @@ export function EvaluationPhaseTabs({
               </p>
               <span className="text-xs font-semibold">{progress}%</span>
             </div>
-            <p className="mt-1 text-xs">
-              {current ? "Current phase" : enabled ? `${phase.weightage}%` : "Locked"}
-            </p>
+            <p className="mt-1 text-xs">{phase.weightage}% weightage</p>
           </button>
         );
       })}

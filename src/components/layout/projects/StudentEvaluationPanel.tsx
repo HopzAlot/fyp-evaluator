@@ -139,6 +139,17 @@ function createInitialSavedPhaseKeys(
   );
 }
 
+function getInitialPhaseKey(
+  phases: EvaluationPhase[],
+  savedPhaseKeys: Record<string, boolean>,
+  fallbackPhaseKey: string,
+) {
+  return (
+    phases.find((phase) => !savedPhaseKeys[phase.key])?.key ??
+    fallbackPhaseKey
+  );
+}
+
 export function StudentEvaluationPanel({
   projectId,
   students,
@@ -146,7 +157,13 @@ export function StudentEvaluationPanel({
   initialPhaseKey,
   savedEvaluations,
 }: StudentEvaluationPanelProps) {
-  const [selectedPhaseKey, setSelectedPhaseKey] = useState(initialPhaseKey);
+  const initialSavedPhaseKeys = createInitialSavedPhaseKeys(
+    savedEvaluations,
+    phases,
+  );
+  const [selectedPhaseKey, setSelectedPhaseKey] = useState(() =>
+    getInitialPhaseKey(phases, initialSavedPhaseKeys, initialPhaseKey),
+  );
   const [selectedStudentName, setSelectedStudentName] = useState(students[0] ?? "");
   const [evaluations, setEvaluations] = useState<EvaluationState>(() =>
     createInitialEvaluations(savedEvaluations, phases),
@@ -156,7 +173,7 @@ export function StudentEvaluationPanel({
   >({});
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [savedPhaseKeys, setSavedPhaseKeys] = useState<Record<string, boolean>>(
-    () => createInitialSavedPhaseKeys(savedEvaluations, phases),
+    initialSavedPhaseKeys,
   );
   const [saveError, setSaveError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -451,7 +468,6 @@ export function StudentEvaluationPanel({
       <EvaluationPhaseTabs
         phases={phases}
         selectedPhaseKey={selectedPhaseKey}
-        currentPhaseKey={initialPhaseKey}
         progressByPhase={phaseProgress}
         isPhaseEnabled={isPhaseEnabled}
         onPhaseChange={handlePhaseChange}
