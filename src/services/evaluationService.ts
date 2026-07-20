@@ -6,7 +6,7 @@ import {
   type EvaluationPhaseDocument,
 } from "@/models/EvaluationPhase";
 import { PloModel, type PloDocument } from "@/models/Plo";
-import { ProjectModel, type ProjectDocument } from "@/models/Project";
+import { ProjectModel } from "@/models/Project";
 import type {
   EvaluationPhase,
   EvaluationPlo,
@@ -237,10 +237,6 @@ export async function savePhaseEvaluation(
   };
 }
 
-function getStudentNames(project: ProjectDocument) {
-  return project.students.map((student) => student.trim()).filter(Boolean);
-}
-
 function getStudentFromEvaluation(
   evaluation: EvaluationDocument,
   studentName: string,
@@ -254,8 +250,8 @@ function getStudentFromEvaluation(
 export async function buildEvaluationResultsExportHtml() {
   await connectDatabase();
 
-  const [projects, phases, plos, evaluations] = await Promise.all([
-    ProjectModel.find().sort({ title: 1 }),
+  const [evaluatedProjectIds, phases, plos] = await Promise.all([
+    EvaluationModel.distinct("projectId"),
     EvaluationPhaseModel.find()
       .sort({ order: 1 })
       .populate<{ plos: PloDocument[] }>({
@@ -263,8 +259,10 @@ export async function buildEvaluationResultsExportHtml() {
         options: { sort: { order: 1 } },
       }),
     PloModel.find().sort({ order: 1 }),
-    EvaluationModel.find(),
   ]);
+  const projects = await ProjectModel.find({
+    _id: { $in: evaluatedProjectIds },
+  }).sort({ title: 1 });
   const exportPlos = plos.map(toEvaluationPlo);
   const exportPhases: EvaluationExportPhase[] = (
     phases as unknown as PopulatedEvaluationPhase[]
@@ -279,27 +277,24 @@ export async function buildEvaluationResultsExportHtml() {
   const rows: string[] = [];
 
   for (const project of projects) {
-    const projectEvaluations = evaluations.filter(
-      (evaluation) => evaluation.projectId.toString() === project._id.toString(),
-    );
+    const projectEvaluations = await EvaluationModel.find({
+      projectId: project._id,
+    });
     const studentNames = Array.from(
-      new Set([
-        ...getStudentNames(project),
-        ...projectEvaluations.flatMap((evaluation) =>
+      new Set(
+        projectEvaluations.flatMap((evaluation) =>
           evaluation.students.map((student) => student.studentName),
         ),
-      ]),
+      ),
     );
+
+    if (studentNames.length === 0) {
+      continue;
+    }
 
     rows.push(
       `<tr class="project"><td colspan="14">${escapeHtml(project.title)}</td></tr>`,
     );
-
-    if (studentNames.length === 0) {
-      rows.push('<tr><td colspan="14">No students found</td></tr>');
-      rows.push('<tr class="spacer"><td colspan="14"></td></tr>');
-      continue;
-    }
 
     for (const studentName of studentNames) {
       rows.push(
@@ -359,6 +354,10 @@ export async function buildEvaluationResultsExportHtml() {
 
       rows.push('<tr class="spacer"><td colspan="14"></td></tr>');
     }
+  }
+
+  if (rows.length === 0) {
+    rows.push('<tr><td colspan="14">No evaluation results found</td></tr>');
   }
 
   return `<!doctype html>
