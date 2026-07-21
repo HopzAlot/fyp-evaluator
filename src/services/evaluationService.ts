@@ -280,13 +280,9 @@ export async function buildEvaluationResultsExportHtml() {
     const projectEvaluations = await EvaluationModel.find({
       projectId: project._id,
     });
-    const studentNames = Array.from(
-      new Set(
-        projectEvaluations.flatMap((evaluation) =>
-          evaluation.students.map((student) => student.studentName),
-        ),
-      ),
-    ).sort((firstName, secondName) => firstName.localeCompare(secondName));
+    const studentNames = (projectEvaluations[0]?.students ?? [])
+      .map((student) => student.studentName)
+      .sort((studentA, studentB) => studentA.localeCompare(studentB));
 
     if (studentNames.length === 0) {
       continue;
