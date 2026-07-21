@@ -326,7 +326,7 @@ export function StudentEvaluationPanel({
       .slice(0, phaseIndex)
       .every(
         (previousPhase) =>
-          getPhaseProgressForStudent(studentId, previousPhase) === 100,
+          savedEvaluationKeys[`${studentId}-${previousPhase.key}`],
       );
   }
 
@@ -472,12 +472,15 @@ export function StudentEvaluationPanel({
     }));
     setShowConfirmDialog(false);
 
-    const nextUnsavedPhase = phases.find(
-      (phase) =>
-        isPhaseEnabledForStudent(selectedStudentId, phase.key) &&
-        phase.key !== selectedPhaseKey &&
-        !savedEvaluationKeys[`${selectedStudentId}-${phase.key}`],
+    const selectedPhaseIndex = phases.findIndex(
+      (phase) => phase.key === selectedPhaseKey,
     );
+    const nextUnsavedPhase = phases
+      .slice(selectedPhaseIndex + 1)
+      .find(
+        (phase) =>
+          !savedEvaluationKeys[`${selectedStudentId}-${phase.key}`],
+      );
 
     if (nextUnsavedPhase) {
       setSelectedPhaseKey(nextUnsavedPhase.key);
@@ -504,6 +507,9 @@ export function StudentEvaluationPanel({
         selectedPhaseKey={selectedPhaseKey}
         progressByPhase={phaseProgress}
         isPhaseEnabled={isPhaseEnabled}
+        isPhaseCompleted={(phaseKey) =>
+          savedEvaluationKeys[`${selectedStudentId}-${phaseKey}`] ?? false
+        }
         onPhaseChange={handlePhaseChange}
       />
 
