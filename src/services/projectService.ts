@@ -340,6 +340,10 @@ export async function deleteProjectById(projectId: string) {
   await connectDatabase();
   const result = await ProjectModel.deleteOne({ _id: projectId });
 
+  if (result.deletedCount) {
+    await EvaluationModel.deleteMany({ projectId });
+  }
+
   return result.deletedCount;
 }
 
@@ -396,6 +400,10 @@ export async function deleteProjectsByIds(projectIds: string[]) {
 
   await connectDatabase();
   const result = await ProjectModel.deleteMany({ _id: { $in: validIds } });
+
+  if (result.deletedCount) {
+    await EvaluationModel.deleteMany({ projectId: { $in: validIds } });
+  }
 
   return result.deletedCount;
 }
