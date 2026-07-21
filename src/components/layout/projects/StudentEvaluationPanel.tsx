@@ -560,20 +560,6 @@ export function StudentEvaluationPanel({
         </aside>
 
         <section className="space-y-3">
-          <div className="flex flex-col gap-2 rounded-md border border-border bg-surface px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase text-primary">
-                {selectedPhase.title}
-              </p>
-              <h2 className="mt-1 text-base font-semibold text-ink">
-                {selectedStudentName}
-              </h2>
-            </div>
-            <p className="text-xs text-muted">
-              Mark each PLO from 0 to 5
-            </p>
-          </div>
-
           {selectedCriteria.length === 0 ? (
             <section className="rounded-md border border-border bg-surface p-4 text-sm text-muted shadow-sm">
               No PLOs configured for this phase yet.
