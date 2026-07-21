@@ -331,14 +331,14 @@ export async function buildEvaluationResultsExportHtml() {
     }
 
     rows.push(
-      `<tr class="project"><td colspan="14">${escapeHtml(project.title)}</td></tr>`,
+      `<tr class="project"><td colspan="15">${escapeHtml(project.title)}</td></tr>`,
     );
 
     for (const { studentId, studentName } of exportStudents) {
       rows.push(
         `<tr class="student"><td>${escapeHtml(studentName)}</td>${exportPlos
           .map((plo) => `<td>${escapeHtml(plo.code)}</td>`)
-          .join("")}<td>Marks</td></tr>`,
+          .join("")}<td>Marks</td><td>Faculty Evaluators</td></tr>`,
       );
 
       for (const phase of exportPhases) {
@@ -390,20 +390,27 @@ export async function buildEvaluationResultsExportHtml() {
 
           return [(obtained / maximum) * phase.weightage];
         });
+        const facultyCount = new Set(
+          phaseEvaluations.flatMap((evaluation) =>
+            getStudentFromEvaluation(evaluation, studentId, studentName)
+              ? [evaluation.facultyId.toString()]
+              : [],
+          ),
+        ).size;
 
         rows.push(
           `<tr><td class="phase">${escapeHtml(`${phase.title} (${phase.weightage}%)`)}</td>${phaseCells}<td>${formatExportNumber(
             average(phaseWeightedScores),
-          )}</td></tr>`,
+          )}</td><td>${facultyCount || ""}</td></tr>`,
         );
       }
 
-      rows.push('<tr class="spacer"><td colspan="14"></td></tr>');
+      rows.push('<tr class="spacer"><td colspan="15"></td></tr>');
     }
   }
 
   if (rows.length === 0) {
-    rows.push('<tr><td colspan="14">No evaluation results found</td></tr>');
+    rows.push('<tr><td colspan="15">No evaluation results found</td></tr>');
   }
 
   return `<!doctype html>
