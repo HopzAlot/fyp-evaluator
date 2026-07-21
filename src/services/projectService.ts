@@ -1,4 +1,4 @@
-import { isValidObjectId, type Types } from "mongoose";
+import { isValidObjectId, Types } from "mongoose";
 import { connectDatabase } from "@/lib/db/mongoose";
 import { EvaluationModel, type EvaluationDocument } from "@/models/Evaluation";
 import { EvaluationPhaseModel } from "@/models/EvaluationPhase";
@@ -190,14 +190,12 @@ export function toProject(project: ProjectDocument): Project {
   };
 }
 
-export async function getAdminProjects() {
-  await connectDatabase();
-  await backfillMissingProjectKeys();
-
+async function getFacultyProjectsWithEvaluationProgress(facultyId: string) {
   const [projects, phases, evaluatedStudentPhases] = await Promise.all([
     ProjectModel.find().sort({ createdAt: -1 }),
     EvaluationPhaseModel.find().sort({ order: 1 }).select("title"),
     EvaluationModel.aggregate<EvaluatedStudentPhase>([
+      { $match: { facultyId: new Types.ObjectId(facultyId) } },
       { $unwind: "$students" },
       {
         $group: {
@@ -244,12 +242,23 @@ export async function getAdminProjects() {
   }));
 }
 
-export async function getFacultyProjects() {
+export async function getAdminProjects() {
   await connectDatabase();
+  await backfillMissingProjectKeys();
 
   const projects = await ProjectModel.find().sort({ createdAt: -1 });
 
   return projects.map(toProject);
+}
+
+export async function getFacultyProjects(facultyId: string) {
+  if (!isValidObjectId(facultyId)) {
+    return [];
+  }
+
+  await connectDatabase();
+
+  return getFacultyProjectsWithEvaluationProgress(facultyId);
 }
 
 export async function getFacultyProjectById(projectId: string) {
@@ -265,7 +274,11 @@ export async function getFacultyProjectById(projectId: string) {
 }
 
 export async function getFacultyDashboardSummary() {
-  const projects = await getFacultyProjects();
+  await connectDatabase();
+
+  const projects = (await ProjectModel.find().sort({ createdAt: -1 })).map(
+    toProject,
+  );
 
   return {
     totalProjects: projects.length,
@@ -310,24 +323,12 @@ export async function createProjectsFromCsvRows(rows: ProjectInput[]) {
     };
   }
 
-  const [projects, phases] = await Promise.all([
-    ProjectModel.insertMany(rowsToInsert, { ordered: false }),
-    EvaluationPhaseModel.find().sort({ order: 1 }).select("title"),
-  ]);
-  const phaseSummaries = phases.map((phase) => ({
-    id: phase._id.toString(),
-    title: phase.title,
-  }));
+  const projects = await ProjectModel.insertMany(rowsToInsert, {
+    ordered: false,
+  });
 
   return {
-    projects: projects.map((project) => ({
-      ...toProject(project),
-      evaluationProgress: getProjectEvaluationProgress(
-        project,
-        phaseSummaries,
-        new Map(),
-      ),
-    })),
+    projects: projects.map(toProject),
     skippedCount,
   };
 }

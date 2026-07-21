@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { ProjectProgress } from "@/components/layout/projects/ProjectProgress";
 import { Button } from "@/components/ui/Button";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { useRouteRefresh } from "@/hooks/useRouteRefresh";
@@ -34,6 +35,13 @@ const columns: DataTableColumn<Project>[] = [
     header: "Supervisor",
     render: (project) => (
       <span className="text-muted">{project.supervisor}</span>
+    ),
+  },
+  {
+    key: "progress",
+    header: "Your Progress",
+    render: (project) => (
+      <ProjectProgress progress={project.evaluationProgress} />
     ),
   },
   {
@@ -94,7 +102,7 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
             : "No projects assigned yet"
         }
         getRowKey={(project) => project.id}
-        minWidth="720px"
+        minWidth="940px"
       />
     </section>
   );

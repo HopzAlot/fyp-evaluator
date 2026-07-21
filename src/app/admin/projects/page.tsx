@@ -4,10 +4,7 @@ import { getAdminProjects } from "@/services/projectService";
 export default async function AdminProjectsPage() {
   const projects = await getAdminProjects();
   const projectsKey = projects
-    .map(
-      (project) =>
-        `${project.id}:${project.status}:${project.evaluationProgress.percentage}:${project.evaluationProgress.completedPhases}:${project.evaluationProgress.totalPhases}:${project.evaluationProgress.currentPhase ?? ""}`,
-    )
+    .map((project) => `${project.id}:${project.status}`)
     .join("|");
 
   return (

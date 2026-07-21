@@ -1,8 +1,19 @@
 import { ProjectsTable } from "@/components/layout/projects/ProjectsTable";
+import { verifyAccessToken, verifyRefreshToken } from "@/lib/auth/jwt";
+import { getAuthTokens } from "@/lib/auth/session";
 import { getFacultyProjects } from "@/services/projectService";
 
+async function getCurrentFacultyId() {
+  const { accessToken, refreshToken } = await getAuthTokens();
+  const payload =
+    (accessToken ? verifyAccessToken(accessToken) : null) ??
+    (refreshToken ? verifyRefreshToken(refreshToken) : null);
+
+  return payload?.role === "faculty" ? payload.userId : "";
+}
+
 export default async function ProjectsPage() {
-  const projects = await getFacultyProjects();
+  const projects = await getFacultyProjects(await getCurrentFacultyId());
 
   return (
     <div className="space-y-6">
