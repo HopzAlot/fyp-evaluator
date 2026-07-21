@@ -8,7 +8,7 @@ export default function ProfilePage() {
           Profile
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-          Your faculty profile information.
+          View and update your faculty profile information.
         </p>
       </section>
 

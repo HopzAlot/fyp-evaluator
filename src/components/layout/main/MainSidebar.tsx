@@ -9,7 +9,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 const facultyNavItems = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Projects", href: "/projects" },
-  { label: "Faculty", href: "/faculty" },
+  { label: "Profile", href: "/profile" },
 ];
 
 const adminNavItems = [

@@ -12,7 +12,7 @@ import {
 import type { UserRole, UserStatus } from "@/types/auth";
 
 const authRoutes = ["/login", "/register"];
-const facultyRoutes = ["/dashboard", "/projects", "/faculty"];
+const facultyRoutes = ["/dashboard", "/projects"];
 const adminRoutes = ["/admin"];
 const sharedProtectedRoutes = ["/profile"];
 const adminApiRoutes = ["/api/admin"];
