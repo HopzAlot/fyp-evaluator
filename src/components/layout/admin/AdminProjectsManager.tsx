@@ -214,7 +214,12 @@ export function AdminProjectsManager({
 
     setProjects((currentProjects) =>
       currentProjects.map((project) =>
-        project.id === data.project?.id ? data.project : project,
+        project.id === data.project?.id
+          ? {
+              ...data.project,
+              evaluationProgress: project.evaluationProgress,
+            }
+          : project,
       ),
     );
     setEditingProject(null);
@@ -272,6 +277,42 @@ export function AdminProjectsManager({
       render: (project) => (
         <span className="text-muted">{project.supervisor}</span>
       ),
+    },
+    {
+      key: "progress",
+      header: "Progress",
+      render: (project) => {
+        const progress = project.evaluationProgress ?? {
+          percentage: 0,
+          completedPhases: 0,
+          totalPhases: 0,
+          currentPhase: null,
+        };
+
+        return (
+          <div className="w-48">
+            <div className="flex items-center justify-between gap-3 text-xs font-semibold text-ink">
+              <span>{progress.percentage}%</span>
+              <span className="text-muted">
+                {progress.completedPhases}/{progress.totalPhases} phases
+              </span>
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-muted">
+              <span
+                className="block h-full rounded-full bg-accent"
+                style={{ width: `${progress.percentage}%` }}
+              />
+            </div>
+            <p className="mt-2 truncate text-xs text-muted">
+              {progress.currentPhase
+                ? `Current: ${progress.currentPhase}`
+                : progress.totalPhases > 0
+                  ? "All phases completed"
+                  : "Not started"}
+            </p>
+          </div>
+        );
+      },
     },
     {
       key: "status",
@@ -407,7 +448,7 @@ export function AdminProjectsManager({
               : "No projects imported yet"
           }
           getRowKey={(project) => project.id}
-          minWidth="900px"
+          minWidth="1100px"
           renderExpandedRow={renderProjectEditForm}
         />
       </section>

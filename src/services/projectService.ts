@@ -1,9 +1,28 @@
-import { isValidObjectId } from "mongoose";
+import { isValidObjectId, type Types } from "mongoose";
 import { connectDatabase } from "@/lib/db/mongoose";
 import { EvaluationModel, type EvaluationDocument } from "@/models/Evaluation";
 import { EvaluationPhaseModel } from "@/models/EvaluationPhase";
 import { ProjectModel, type ProjectDocument } from "@/models/Project";
-import type { Project, ProjectInput, ProjectStatus } from "@/types/project";
+import type {
+  Project,
+  ProjectEvaluationProgress,
+  ProjectInput,
+  ProjectStatus,
+} from "@/types/project";
+
+type EvaluationPhaseSummary = {
+  id: string;
+  title: string;
+};
+
+type EvaluatedStudentPhase = {
+  _id: {
+    projectId: Types.ObjectId;
+    phaseId: Types.ObjectId;
+    studentId: string;
+    studentName: string;
+  };
+};
 
 function normalizeProjectKeyPart(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -54,15 +73,7 @@ async function backfillMissingProjectKeys() {
   );
 }
 
-function getProjectEvaluationStatus(
-  project: ProjectDocument,
-  phaseIds: string[],
-  evaluations: EvaluationDocument[],
-): ProjectStatus {
-  if (project.students.length === 0 || phaseIds.length === 0) {
-    return "in progress";
-  }
-
+function getEvaluatedStudentsByPhase(evaluations: EvaluationDocument[]) {
   const evaluatedStudentsByPhase = new Map<string, Set<string>>();
 
   evaluations.forEach((evaluation) => {
@@ -77,16 +88,53 @@ function getProjectEvaluationStatus(
     evaluatedStudentsByPhase.set(evaluation.phaseId.toString(), studentKeys);
   });
 
-  const allPhasesComplete = phaseIds.every((phaseId) => {
-    const evaluatedStudents = evaluatedStudentsByPhase.get(phaseId);
+  return evaluatedStudentsByPhase;
+}
 
-    return project.students.every((studentName, index) =>
+function getProjectEvaluationProgress(
+  project: ProjectDocument,
+  phases: EvaluationPhaseSummary[],
+  evaluatedStudentsByPhase: Map<string, Set<string>>,
+): ProjectEvaluationProgress {
+  const totalStudentPhases = project.students.length * phases.length;
+
+  if (totalStudentPhases === 0) {
+    return {
+      percentage: 0,
+      completedPhases: 0,
+      totalPhases: phases.length,
+      currentPhase: null,
+    };
+  }
+
+  let completedStudentPhases = 0;
+  let completedPhases = 0;
+  let currentPhase: string | null = null;
+
+  phases.forEach((phase) => {
+    const evaluatedStudents = evaluatedStudentsByPhase.get(phase.id);
+    const completedStudents = project.students.filter((studentName, index) =>
       evaluatedStudents?.has(`${project._id.toString()}-${index + 1}`) ||
       evaluatedStudents?.has(studentName.trim().toLowerCase()),
-    );
+    ).length;
+
+    completedStudentPhases += completedStudents;
+
+    if (completedStudents === project.students.length) {
+      completedPhases += 1;
+    } else if (!currentPhase) {
+      currentPhase = phase.title;
+    }
   });
 
-  return allPhasesComplete ? "completed" : "in progress";
+  return {
+    percentage: Math.round(
+      (completedStudentPhases / totalStudentPhases) * 100,
+    ),
+    completedPhases,
+    totalPhases: phases.length,
+    currentPhase,
+  };
 }
 
 export async function syncProjectStatus(projectId: string) {
@@ -96,9 +144,9 @@ export async function syncProjectStatus(projectId: string) {
 
   await connectDatabase();
 
-  const [project, phaseIds, evaluations] = await Promise.all([
+  const [project, phases, evaluations] = await Promise.all([
     ProjectModel.findById(projectId),
-    EvaluationPhaseModel.distinct("_id"),
+    EvaluationPhaseModel.find().sort({ order: 1 }).select("title"),
     EvaluationModel.find({ projectId }).select(
       "projectId phaseId students.studentId students.studentName",
     ),
@@ -108,11 +156,19 @@ export async function syncProjectStatus(projectId: string) {
     return null;
   }
 
-  const status = getProjectEvaluationStatus(
+  const progress = getProjectEvaluationProgress(
     project,
-    phaseIds.map(String),
-    evaluations,
+    phases.map((phase) => ({
+      id: phase._id.toString(),
+      title: phase.title,
+    })),
+    getEvaluatedStudentsByPhase(evaluations),
   );
+  const status: ProjectStatus =
+    progress.totalPhases > 0 &&
+    progress.completedPhases === progress.totalPhases
+      ? "completed"
+      : "in progress";
 
   if (project.status !== status) {
     await ProjectModel.updateOne({ _id: project._id }, { $set: { status } });
@@ -138,9 +194,54 @@ export async function getAdminProjects() {
   await connectDatabase();
   await backfillMissingProjectKeys();
 
-  const projects = await ProjectModel.find().sort({ createdAt: -1 });
+  const [projects, phases, evaluatedStudentPhases] = await Promise.all([
+    ProjectModel.find().sort({ createdAt: -1 }),
+    EvaluationPhaseModel.find().sort({ order: 1 }).select("title"),
+    EvaluationModel.aggregate<EvaluatedStudentPhase>([
+      { $unwind: "$students" },
+      {
+        $group: {
+          _id: {
+            projectId: "$projectId",
+            phaseId: "$phaseId",
+            studentId: "$students.studentId",
+            studentName: "$students.studentName",
+          },
+        },
+      },
+    ]),
+  ]);
+  const phaseSummaries = phases.map((phase) => ({
+    id: phase._id.toString(),
+    title: phase.title,
+  }));
+  const evaluatedStudentsByProject = new Map<
+    string,
+    Map<string, Set<string>>
+  >();
 
-  return projects.map(toProject);
+  evaluatedStudentPhases.forEach(({ _id }) => {
+    const projectId = _id.projectId.toString();
+    const phaseId = _id.phaseId.toString();
+    const projectPhases =
+      evaluatedStudentsByProject.get(projectId) ??
+      new Map<string, Set<string>>();
+    const studentKeys = projectPhases.get(phaseId) ?? new Set<string>();
+
+    studentKeys.add((_id.studentId ?? "").trim().toLowerCase());
+    studentKeys.add((_id.studentName ?? "").trim().toLowerCase());
+    projectPhases.set(phaseId, studentKeys);
+    evaluatedStudentsByProject.set(projectId, projectPhases);
+  });
+
+  return projects.map((project) => ({
+    ...toProject(project),
+    evaluationProgress: getProjectEvaluationProgress(
+      project,
+      phaseSummaries,
+      evaluatedStudentsByProject.get(project._id.toString()) ?? new Map(),
+    ),
+  }));
 }
 
 export async function getFacultyProjects() {
@@ -209,12 +310,24 @@ export async function createProjectsFromCsvRows(rows: ProjectInput[]) {
     };
   }
 
-  const projects = await ProjectModel.insertMany(rowsToInsert, {
-    ordered: false,
-  });
+  const [projects, phases] = await Promise.all([
+    ProjectModel.insertMany(rowsToInsert, { ordered: false }),
+    EvaluationPhaseModel.find().sort({ order: 1 }).select("title"),
+  ]);
+  const phaseSummaries = phases.map((phase) => ({
+    id: phase._id.toString(),
+    title: phase.title,
+  }));
 
   return {
-    projects: projects.map(toProject),
+    projects: projects.map((project) => ({
+      ...toProject(project),
+      evaluationProgress: getProjectEvaluationProgress(
+        project,
+        phaseSummaries,
+        new Map(),
+      ),
+    })),
     skippedCount,
   };
 }

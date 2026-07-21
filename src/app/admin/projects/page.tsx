@@ -3,7 +3,12 @@ import { getAdminProjects } from "@/services/projectService";
 
 export default async function AdminProjectsPage() {
   const projects = await getAdminProjects();
-  const projectsKey = projects.map((project) => project.id).join("|");
+  const projectsKey = projects
+    .map(
+      (project) =>
+        `${project.id}:${project.status}:${project.evaluationProgress.percentage}:${project.evaluationProgress.completedPhases}:${project.evaluationProgress.totalPhases}:${project.evaluationProgress.currentPhase ?? ""}`,
+    )
+    .join("|");
 
   return (
     <div className="space-y-6">
