@@ -6,11 +6,16 @@ import { ProjectImportPanel } from "@/components/layout/admin/ProjectImportPanel
 import { Button } from "@/components/ui/Button";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { useRouteRefresh } from "@/hooks/useRouteRefresh";
-import type { Project, ProjectInput } from "@/types/project";
+import type { Project, ProjectInput, ProjectStatus } from "@/types/project";
 import { filterProjects } from "@/utils/search/searchFilters";
 
 type AdminProjectsManagerProps = {
   initialProjects: Project[];
+};
+
+const statusStyles: Record<ProjectStatus, string> = {
+  "in progress": "border-highlight/30 bg-highlight-soft text-ink",
+  completed: "border-accent/30 bg-accent-soft text-accent",
 };
 
 export function AdminProjectsManager({
@@ -294,6 +299,17 @@ export function AdminProjectsManager({
       ),
     },
     {
+      key: "status",
+      header: "Status",
+      render: (project) => (
+        <span
+          className={`inline-flex rounded-md border px-2.5 py-1 text-xs font-semibold capitalize ${statusStyles[project.status]}`}
+        >
+          {project.status}
+        </span>
+      ),
+    },
+    {
       key: "action",
       header: "Action",
       className: "text-right",
@@ -416,7 +432,7 @@ export function AdminProjectsManager({
               : "No projects imported yet"
           }
           getRowKey={(project) => project.id}
-          minWidth="1120px"
+          minWidth="1200px"
           renderExpandedRow={renderProjectEditForm}
         />
       </section>

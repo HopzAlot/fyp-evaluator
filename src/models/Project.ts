@@ -5,6 +5,7 @@ import {
   type HydratedDocument,
   type Model,
 } from "mongoose";
+import type { ProjectStatus } from "@/types/project";
 
 type Project = {
   projectKey: string;
@@ -14,6 +15,7 @@ type Project = {
   coSupervisor: string;
   industrialPartner: string;
   sdg: string;
+  status: ProjectStatus;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -61,6 +63,12 @@ const ProjectSchema = new Schema<Project>(
       type: String,
       default: "",
       trim: true,
+    },
+    status: {
+      type: String,
+      enum: ["in progress", "completed"],
+      default: "in progress",
+      required: true,
     },
   },
   {

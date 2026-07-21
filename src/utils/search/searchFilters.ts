@@ -27,6 +27,7 @@ export function filterProjects<TProject extends Project>(
         project.coSupervisor,
         project.industrialPartner,
         project.sdg,
+        project.status,
         ...project.students,
       ],
       searchTerm,

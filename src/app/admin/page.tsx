@@ -54,6 +54,21 @@ const recentProjectColumns: DataTableColumn<Project>[] = [
     header: "Supervisor",
     render: (item) => <span className="text-muted">{item.supervisor}</span>,
   },
+  {
+    key: "status",
+    header: "Status",
+    render: (item) => (
+      <span
+        className={`inline-flex rounded-md border px-2 py-1 text-xs font-semibold capitalize ${
+          item.status === "completed"
+            ? "border-accent/30 bg-accent-soft text-accent"
+            : "border-highlight/30 bg-highlight-soft text-ink"
+        }`}
+      >
+        {item.status}
+      </span>
+    ),
+  },
 ];
 
 async function getAdminUser() {

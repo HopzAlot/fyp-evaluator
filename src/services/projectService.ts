@@ -1,7 +1,9 @@
 import { isValidObjectId } from "mongoose";
 import { connectDatabase } from "@/lib/db/mongoose";
+import { EvaluationModel, type EvaluationDocument } from "@/models/Evaluation";
+import { EvaluationPhaseModel } from "@/models/EvaluationPhase";
 import { ProjectModel, type ProjectDocument } from "@/models/Project";
-import type { Project, ProjectInput } from "@/types/project";
+import type { Project, ProjectInput, ProjectStatus } from "@/types/project";
 
 function normalizeProjectKeyPart(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -52,6 +54,73 @@ async function backfillMissingProjectKeys() {
   );
 }
 
+function getProjectEvaluationStatus(
+  project: ProjectDocument,
+  phaseIds: string[],
+  evaluations: EvaluationDocument[],
+): ProjectStatus {
+  if (project.students.length === 0 || phaseIds.length === 0) {
+    return "in progress";
+  }
+
+  const evaluatedStudentsByPhase = new Map<string, Set<string>>();
+
+  evaluations.forEach((evaluation) => {
+    const studentKeys = evaluatedStudentsByPhase.get(
+      evaluation.phaseId.toString(),
+    ) ?? new Set<string>();
+
+    evaluation.students.forEach((student) => {
+      studentKeys.add(student.studentId.trim().toLowerCase());
+      studentKeys.add(student.studentName.trim().toLowerCase());
+    });
+    evaluatedStudentsByPhase.set(evaluation.phaseId.toString(), studentKeys);
+  });
+
+  const allPhasesComplete = phaseIds.every((phaseId) => {
+    const evaluatedStudents = evaluatedStudentsByPhase.get(phaseId);
+
+    return project.students.every((studentName, index) =>
+      evaluatedStudents?.has(`${project._id.toString()}-${index + 1}`) ||
+      evaluatedStudents?.has(studentName.trim().toLowerCase()),
+    );
+  });
+
+  return allPhasesComplete ? "completed" : "in progress";
+}
+
+export async function syncProjectStatus(projectId: string) {
+  if (!isValidObjectId(projectId)) {
+    return null;
+  }
+
+  await connectDatabase();
+
+  const [project, phaseIds, evaluations] = await Promise.all([
+    ProjectModel.findById(projectId),
+    EvaluationPhaseModel.distinct("_id"),
+    EvaluationModel.find({ projectId }).select(
+      "projectId phaseId students.studentId students.studentName",
+    ),
+  ]);
+
+  if (!project) {
+    return null;
+  }
+
+  const status = getProjectEvaluationStatus(
+    project,
+    phaseIds.map(String),
+    evaluations,
+  );
+
+  if (project.status !== status) {
+    await ProjectModel.updateOne({ _id: project._id }, { $set: { status } });
+  }
+
+  return status;
+}
+
 export function toProject(project: ProjectDocument): Project {
   return {
     id: project._id.toString(),
@@ -61,6 +130,7 @@ export function toProject(project: ProjectDocument): Project {
     coSupervisor: project.coSupervisor,
     industrialPartner: project.industrialPartner,
     sdg: project.sdg,
+    status: project.status === "completed" ? "completed" : "in progress",
   };
 }
 
@@ -196,6 +266,10 @@ export async function updateProjectById(
       runValidators: true,
     },
   );
+
+  if (project) {
+    project.status = (await syncProjectStatus(projectId)) ?? project.status;
+  }
 
   return project ? toProject(project) : null;
 }

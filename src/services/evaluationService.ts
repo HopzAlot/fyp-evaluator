@@ -7,6 +7,7 @@ import {
 } from "@/models/EvaluationPhase";
 import { PloModel, type PloDocument } from "@/models/Plo";
 import { ProjectModel } from "@/models/Project";
+import { syncProjectStatus } from "@/services/projectService";
 import type {
   EvaluationPhase,
   EvaluationPlo,
@@ -254,6 +255,8 @@ export async function savePhaseEvaluation(
       runValidators: true,
     },
   );
+
+  await syncProjectStatus(projectId);
 
   return {
     evaluationId: evaluation._id.toString(),
