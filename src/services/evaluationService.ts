@@ -210,6 +210,22 @@ export async function savePhaseEvaluation(
   const projectObjectId = new Types.ObjectId(projectId);
   const facultyObjectId = new Types.ObjectId(facultyId);
   const phaseObjectId = new Types.ObjectId(phaseInput.phaseId);
+  const existingEvaluation = await EvaluationModel.findOne({
+    projectId: projectObjectId,
+    facultyId: facultyObjectId,
+    phaseId: phaseObjectId,
+  });
+  const studentsByName = new Map(
+    (existingEvaluation?.students ?? []).map((student) => [
+      student.studentName.trim().toLowerCase(),
+      student,
+    ]),
+  );
+
+  students.forEach((student) => {
+    studentsByName.set(student.studentName.trim().toLowerCase(), student);
+  });
+
   const evaluation = await EvaluationModel.findOneAndUpdate(
     {
       projectId: projectObjectId,
@@ -221,7 +237,7 @@ export async function savePhaseEvaluation(
         projectId: projectObjectId,
         facultyId: facultyObjectId,
         phaseId: phaseObjectId,
-        students,
+        students: Array.from(studentsByName.values()),
         submittedAt: new Date(),
       },
     },
@@ -280,9 +296,13 @@ export async function buildEvaluationResultsExportHtml() {
     const projectEvaluations = await EvaluationModel.find({
       projectId: project._id,
     });
-    const studentNames = (projectEvaluations[0]?.students ?? [])
-      .map((student) => student.studentName)
-      .sort((studentA, studentB) => studentA.localeCompare(studentB));
+    const studentNames = Array.from(
+      new Set(
+        projectEvaluations.flatMap((evaluation) =>
+          evaluation.students.map((student) => student.studentName),
+        ),
+      ),
+    ).sort((studentA, studentB) => studentA.localeCompare(studentB));
 
     if (studentNames.length === 0) {
       continue;

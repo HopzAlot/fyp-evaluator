@@ -130,7 +130,9 @@ function createInitialSavedPhaseKeys(
       const phaseKey = phaseKeyById.get(savedEvaluation.phaseId);
 
       if (phaseKey) {
-        savedKeys[phaseKey] = true;
+        savedEvaluation.students.forEach((student) => {
+          savedKeys[`${student.studentName}-${phaseKey}`] = true;
+        });
       }
 
       return savedKeys;
@@ -141,11 +143,13 @@ function createInitialSavedPhaseKeys(
 
 function getInitialPhaseKey(
   phases: EvaluationPhase[],
-  savedPhaseKeys: Record<string, boolean>,
+  savedEvaluationKeys: Record<string, boolean>,
   fallbackPhaseKey: string,
+  studentName: string,
 ) {
   return (
-    phases.find((phase) => !savedPhaseKeys[phase.key])?.key ??
+    phases.find((phase) => !savedEvaluationKeys[`${studentName}-${phase.key}`])
+      ?.key ??
     fallbackPhaseKey
   );
 }
@@ -161,10 +165,17 @@ export function StudentEvaluationPanel({
     savedEvaluations,
     phases,
   );
+  const initialStudentName = students[0] ?? "";
   const [selectedPhaseKey, setSelectedPhaseKey] = useState(() =>
-    getInitialPhaseKey(phases, initialSavedPhaseKeys, initialPhaseKey),
+    getInitialPhaseKey(
+      phases,
+      initialSavedPhaseKeys,
+      initialPhaseKey,
+      initialStudentName,
+    ),
   );
-  const [selectedStudentName, setSelectedStudentName] = useState(students[0] ?? "");
+  const [selectedStudentName, setSelectedStudentName] =
+    useState(initialStudentName);
   const [evaluations, setEvaluations] = useState<EvaluationState>(() =>
     createInitialEvaluations(savedEvaluations, phases),
   );
@@ -172,9 +183,8 @@ export function StudentEvaluationPanel({
     Record<string, boolean>
   >({});
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [savedPhaseKeys, setSavedPhaseKeys] = useState<Record<string, boolean>>(
-    initialSavedPhaseKeys,
-  );
+  const [savedEvaluationKeys, setSavedEvaluationKeys] =
+    useState<Record<string, boolean>>(initialSavedPhaseKeys);
   const [saveError, setSaveError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const allowBackNavigationRef = useRef(false);
@@ -202,21 +212,20 @@ export function StudentEvaluationPanel({
 
   const evaluationKey = `${selectedStudentName}-${selectedPhaseKey}`;
   const showErrors = attemptedSubmits[evaluationKey] ?? false;
-  const saved = savedPhaseKeys[selectedPhaseKey] ?? false;
+  const saved = savedEvaluationKeys[evaluationKey] ?? false;
   const hasUnsavedEvaluationChanges = useMemo(
     () =>
-      Object.values(evaluations).some((phaseEvaluations) =>
+      Object.entries(evaluations).some(([studentName, phaseEvaluations]) =>
         Object.entries(phaseEvaluations).some(
           ([phaseKey, evaluation]) =>
-            !savedPhaseKeys[phaseKey] &&
+            !savedEvaluationKeys[`${studentName}-${phaseKey}`] &&
             Object.keys(evaluation.ratings).length > 0,
         ),
       ),
-    [evaluations, savedPhaseKeys],
+    [evaluations, savedEvaluationKeys],
   );
-  const selectedPhaseComplete = students.every(
-    (student) => getPhaseProgressForStudent(student, selectedPhase) === 100,
-  );
+  const selectedStudentPhaseComplete =
+    getPhaseProgressForStudent(selectedStudentName, selectedPhase) === 100;
 
   useEffect(() => {
     if (!hasUnsavedEvaluationChanges) {
@@ -315,7 +324,7 @@ export function StudentEvaluationPanel({
   }
 
   function updateEvaluation(updates: Partial<PhaseEvaluation>) {
-    if (savedPhaseKeys[selectedPhaseKey]) {
+    if (savedEvaluationKeys[evaluationKey]) {
       return;
     }
 
@@ -365,27 +374,29 @@ export function StudentEvaluationPanel({
         phases[0];
 
       setSelectedPhaseKey(firstOpenPhase.key);
+      return;
+    }
+
+    const firstUnsavedEnabledPhase = phases.find(
+      (phase) =>
+        isPhaseEnabledForStudent(studentName, phase.key) &&
+        !savedEvaluationKeys[`${studentName}-${phase.key}`],
+    );
+
+    if (firstUnsavedEnabledPhase) {
+      setSelectedPhaseKey(firstUnsavedEnabledPhase.key);
     }
   }
 
   function handleSave() {
-    const attemptedKeys = students.reduce<Record<string, boolean>>(
-      (keys, student) => {
-        keys[`${student}-${selectedPhaseKey}`] = true;
-
-        return keys;
-      },
-      {},
-    );
-
     setAttemptedSubmits((current) => ({
       ...current,
-      ...attemptedKeys,
+      [evaluationKey]: true,
     }));
 
-    if (!selectedPhaseComplete) {
+    if (!selectedStudentPhaseComplete) {
       setSaveError(
-        "Complete all PLO marks for every student in this phase before saving.",
+        "Complete all PLO marks for this student before saving.",
       );
       return;
     }
@@ -399,7 +410,7 @@ export function StudentEvaluationPanel({
       phases: [
         {
           phaseId: selectedPhase.id,
-          students: students.map((studentName) => {
+          students: [selectedStudentName].map((studentName) => {
             const evaluation = getEvaluation(
               evaluations,
               studentName,
@@ -443,15 +454,26 @@ export function StudentEvaluationPanel({
       return;
     }
 
-    setSavedPhaseKeys((current) => ({
+    setSavedEvaluationKeys((current) => ({
       ...current,
-      [selectedPhaseKey]: true,
+      [evaluationKey]: true,
     }));
     setShowConfirmDialog(false);
 
-    console.log("Phase evaluation saved", {
+    const nextUnsavedPhase = phases.find(
+      (phase) =>
+        isPhaseEnabledForStudent(selectedStudentName, phase.key) &&
+        phase.key !== selectedPhaseKey &&
+        !savedEvaluationKeys[`${selectedStudentName}-${phase.key}`],
+    );
+
+    if (nextUnsavedPhase) {
+      setSelectedPhaseKey(nextUnsavedPhase.key);
+    }
+
+    console.log("Student phase evaluation saved", {
+      studentName: selectedStudentName,
       phaseKey: selectedPhaseKey,
-      evaluations,
     });
   }
 
@@ -594,14 +616,14 @@ export function StudentEvaluationPanel({
               disabled={saved}
               className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted"
             >
-              Save {selectedPhase.title}
+              Save {selectedStudentName}
             </button>
             {saveError ? (
               <p className="text-sm font-medium text-danger">{saveError}</p>
             ) : null}
             {saved ? (
               <p className="text-sm font-semibold text-accent">
-                Evaluation saved.
+                Student evaluation saved.
               </p>
             ) : null}
           </div>
@@ -615,8 +637,9 @@ export function StudentEvaluationPanel({
               Save {selectedPhase.title}?
             </h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              Once this phase is saved, the entered marks for this phase cannot
-              be changed again. Are you sure you want to continue?
+              Once this evaluation is saved, the entered marks for{" "}
+              {selectedStudentName} in this phase cannot be changed again. Are
+              you sure you want to continue?
             </p>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
