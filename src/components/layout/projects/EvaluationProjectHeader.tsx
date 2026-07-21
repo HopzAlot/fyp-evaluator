@@ -21,7 +21,7 @@ export function EvaluationProjectHeader({
   industrialPartner,
   students,
 }: EvaluationProjectHeaderProps) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <section className="border-b border-border pb-5">
