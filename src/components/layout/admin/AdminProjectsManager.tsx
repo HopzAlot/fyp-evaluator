@@ -274,31 +274,6 @@ export function AdminProjectsManager({
       ),
     },
     {
-      key: "coSupervisor",
-      header: "Co Supervisor",
-      render: (project) => (
-        <span className="text-muted">
-          {project.coSupervisor || "Not provided"}
-        </span>
-      ),
-    },
-    {
-      key: "partner",
-      header: "Industrial Partner",
-      render: (project) => (
-        <span className="text-muted">
-          {project.industrialPartner || "Not provided"}
-        </span>
-      ),
-    },
-    {
-      key: "sdg",
-      header: "SDG",
-      render: (project) => (
-        <span className="text-muted">{project.sdg || "Not provided"}</span>
-      ),
-    },
-    {
       key: "status",
       header: "Status",
       render: (project) => (
@@ -432,7 +407,7 @@ export function AdminProjectsManager({
               : "No projects imported yet"
           }
           getRowKey={(project) => project.id}
-          minWidth="1200px"
+          minWidth="900px"
           renderExpandedRow={renderProjectEditForm}
         />
       </section>

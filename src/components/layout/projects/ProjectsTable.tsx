@@ -17,12 +17,7 @@ const columns: DataTableColumn<Project>[] = [
     key: "project",
     header: "Project",
     render: (project) => (
-      <>
-        <p className="font-semibold text-ink">{project.title}</p>
-        <p className="mt-1 text-sm text-muted">
-          Supervisor: {project.supervisor}
-        </p>
-      </>
+      <span className="font-semibold text-ink">{project.title}</span>
     ),
   },
   {
@@ -35,28 +30,10 @@ const columns: DataTableColumn<Project>[] = [
     ),
   },
   {
-    key: "coSupervisor",
-    header: "Co Supervisor",
+    key: "supervisor",
+    header: "Supervisor",
     render: (project) => (
-      <span className="text-muted">
-        {project.coSupervisor || "Not provided"}
-      </span>
-    ),
-  },
-  {
-    key: "partner",
-    header: "Industrial Partner",
-    render: (project) => (
-      <span className="text-muted">
-        {project.industrialPartner || "Not provided"}
-      </span>
-    ),
-  },
-  {
-    key: "sdg",
-    header: "SDG",
-    render: (project) => (
-      <span className="text-muted">{project.sdg || "Not provided"}</span>
+      <span className="text-muted">{project.supervisor}</span>
     ),
   },
   {
@@ -117,7 +94,7 @@ export function ProjectsTable({ projects }: ProjectsTableProps) {
             : "No projects assigned yet"
         }
         getRowKey={(project) => project.id}
-        minWidth="1040px"
+        minWidth="720px"
       />
     </section>
   );
