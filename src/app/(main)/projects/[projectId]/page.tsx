@@ -39,7 +39,10 @@ export default async function EvaluationPage({ params }: EvaluationPageProps) {
   const savedEvaluations = facultyId
     ? await getSavedProjectEvaluations(project.id, facultyId)
     : [];
-  const students = project.students;
+  const students = project.students.map((studentName, index) => ({
+    id: `${project.id}-${index + 1}`,
+    name: studentName,
+  }));
   const initialPhase = phases[0];
 
   return (

@@ -107,6 +107,7 @@ export async function getSavedProjectEvaluations(
     phaseId: evaluation.phaseId.toString(),
     submittedAt: evaluation.submittedAt.toISOString(),
     students: evaluation.students.map((student) => ({
+      studentId: student.studentId || student.studentName,
       studentName: student.studentName,
       evaluations: student.evaluations.map((score) => ({
         ploId: score.ploId.toString(),
@@ -168,7 +169,12 @@ export async function savePhaseEvaluation(
   const populatedPhase = phase as unknown as PopulatedEvaluationPhase;
   const requiredPloIds = populatedPhase.plos.map((plo) => plo._id.toString());
   const students = phaseInput.students.map((student) => {
+    const studentId = student.studentId.trim();
     const studentName = student.studentName.trim();
+
+    if (!studentId) {
+      throw new Error("Student id is required");
+    }
 
     if (!studentName) {
       throw new Error("Student name is required");
@@ -199,6 +205,7 @@ export async function savePhaseEvaluation(
     });
 
     return {
+      studentId,
       studentName,
       evaluations: scores,
       totalMarks: scores.reduce(
@@ -217,13 +224,13 @@ export async function savePhaseEvaluation(
   });
   const studentsByName = new Map(
     (existingEvaluation?.students ?? []).map((student) => [
-      student.studentName.trim().toLowerCase(),
+      (student.studentId || student.studentName).trim().toLowerCase(),
       student,
     ]),
   );
 
   students.forEach((student) => {
-    studentsByName.set(student.studentName.trim().toLowerCase(), student);
+    studentsByName.set(student.studentId.trim().toLowerCase(), student);
   });
 
   const evaluation = await EvaluationModel.findOneAndUpdate(
@@ -255,11 +262,14 @@ export async function savePhaseEvaluation(
 
 function getStudentFromEvaluation(
   evaluation: EvaluationDocument,
+  studentId: string,
   studentName: string,
 ) {
   return evaluation.students.find(
     (student) =>
-      student.studentName.trim().toLowerCase() === studentName.toLowerCase(),
+      (student.studentId
+        ? student.studentId.trim().toLowerCase() === studentId.toLowerCase()
+        : student.studentName.trim().toLowerCase() === studentName.toLowerCase()),
   );
 }
 
@@ -296,15 +306,24 @@ export async function buildEvaluationResultsExportHtml() {
     const projectEvaluations = await EvaluationModel.find({
       projectId: project._id,
     });
-    const studentNames = Array.from(
-      new Set(
-        projectEvaluations.flatMap((evaluation) =>
-          evaluation.students.map((student) => student.studentName),
-        ),
-      ),
-    ).sort((studentA, studentB) => studentA.localeCompare(studentB));
+    const studentsById = new Map<string, string>();
 
-    if (studentNames.length === 0) {
+    projectEvaluations.forEach((evaluation) => {
+      evaluation.students.forEach((student) => {
+        studentsById.set(
+          student.studentId || student.studentName,
+          student.studentName,
+        );
+      });
+    });
+
+    const exportStudents = Array.from(studentsById.entries())
+      .map(([studentId, studentName]) => ({ studentId, studentName }))
+      .sort((studentA, studentB) =>
+        studentA.studentName.localeCompare(studentB.studentName),
+      );
+
+    if (exportStudents.length === 0) {
       continue;
     }
 
@@ -312,7 +331,7 @@ export async function buildEvaluationResultsExportHtml() {
       `<tr class="project"><td colspan="14">${escapeHtml(project.title)}</td></tr>`,
     );
 
-    for (const studentName of studentNames) {
+    for (const { studentId, studentName } of exportStudents) {
       rows.push(
         `<tr class="student"><td>${escapeHtml(studentName)}</td>${exportPlos
           .map((plo) => `<td>${escapeHtml(plo.code)}</td>`)
@@ -331,7 +350,11 @@ export async function buildEvaluationResultsExportHtml() {
 
             const ploAverage = average(
               phaseEvaluations.flatMap((evaluation) => {
-                const student = getStudentFromEvaluation(evaluation, studentName);
+                const student = getStudentFromEvaluation(
+                  evaluation,
+                  studentId,
+                  studentName,
+                );
                 const score = student?.evaluations.find(
                   (studentScore) => studentScore.ploId.toString() === plo.id,
                 );
@@ -346,7 +369,11 @@ export async function buildEvaluationResultsExportHtml() {
           })
           .join("");
         const phaseWeightedScores = phaseEvaluations.flatMap((evaluation) => {
-          const student = getStudentFromEvaluation(evaluation, studentName);
+          const student = getStudentFromEvaluation(
+            evaluation,
+            studentId,
+            studentName,
+          );
 
           if (!student || phase.plos.length === 0) {
             return [];

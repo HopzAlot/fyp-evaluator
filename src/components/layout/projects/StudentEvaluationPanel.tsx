@@ -11,10 +11,15 @@ import type {
 
 type StudentEvaluationPanelProps = {
   projectId: string;
-  students: string[];
+  students: EvaluationStudent[];
   phases: EvaluationPhase[];
   initialPhaseKey: string;
   savedEvaluations: SavedPhaseEvaluation[];
+};
+
+type EvaluationStudent = {
+  id: string;
+  name: string;
 };
 
 type PhaseEvaluation = {
@@ -99,8 +104,10 @@ function createInitialEvaluations(
     const ploCodeById = new Map(phase.plos.map((plo) => [plo.id, plo.code]));
 
     savedEvaluation.students.forEach((student) => {
-      state[student.studentName] = {
-        ...state[student.studentName],
+      const studentKey = student.studentId || student.studentName;
+
+      state[studentKey] = {
+        ...state[studentKey],
         [phase.key]: {
           ratings: Object.fromEntries(
             student.evaluations
@@ -131,7 +138,8 @@ function createInitialSavedPhaseKeys(
 
       if (phaseKey) {
         savedEvaluation.students.forEach((student) => {
-          savedKeys[`${student.studentName}-${phaseKey}`] = true;
+          savedKeys[`${student.studentId || student.studentName}-${phaseKey}`] =
+            true;
         });
       }
 
@@ -165,17 +173,16 @@ export function StudentEvaluationPanel({
     savedEvaluations,
     phases,
   );
-  const initialStudentName = students[0] ?? "";
+  const initialStudentId = students[0]?.id ?? "";
   const [selectedPhaseKey, setSelectedPhaseKey] = useState(() =>
     getInitialPhaseKey(
       phases,
       initialSavedPhaseKeys,
       initialPhaseKey,
-      initialStudentName,
+      initialStudentId,
     ),
   );
-  const [selectedStudentName, setSelectedStudentName] =
-    useState(initialStudentName);
+  const [selectedStudentId, setSelectedStudentId] = useState(initialStudentId);
   const [evaluations, setEvaluations] = useState<EvaluationState>(() =>
     createInitialEvaluations(savedEvaluations, phases),
   );
@@ -193,24 +200,28 @@ export function StudentEvaluationPanel({
   const selectedCriteria = selectedPhase?.plos ?? [];
   const selectedEvaluation = getEvaluation(
     evaluations,
-    selectedStudentName,
+    selectedStudentId,
     selectedPhaseKey,
   );
+  const selectedStudent = students.find(
+    (student) => student.id === selectedStudentId,
+  );
+  const selectedStudentName = selectedStudent?.name ?? "";
 
   const phaseProgress = useMemo(
     () =>
       phases.reduce<Record<string, number>>((progress, phase) => {
         progress[phase.key] = getCompletion(
-          getEvaluation(evaluations, selectedStudentName, phase.key),
+          getEvaluation(evaluations, selectedStudentId, phase.key),
           phase.plos.length,
         );
 
         return progress;
       }, {}),
-    [evaluations, phases, selectedStudentName],
+    [evaluations, phases, selectedStudentId],
   );
 
-  const evaluationKey = `${selectedStudentName}-${selectedPhaseKey}`;
+  const evaluationKey = `${selectedStudentId}-${selectedPhaseKey}`;
   const showErrors = attemptedSubmits[evaluationKey] ?? false;
   const saved = savedEvaluationKeys[evaluationKey] ?? false;
   const hasUnsavedEvaluationChanges = useMemo(
@@ -225,7 +236,7 @@ export function StudentEvaluationPanel({
     [evaluations, savedEvaluationKeys],
   );
   const selectedStudentPhaseComplete =
-    getPhaseProgressForStudent(selectedStudentName, selectedPhase) === 100;
+    getPhaseProgressForStudent(selectedStudentId, selectedPhase) === 100;
 
   useEffect(() => {
     if (!hasUnsavedEvaluationChanges) {
@@ -297,14 +308,14 @@ export function StudentEvaluationPanel({
     };
   }, [hasUnsavedEvaluationChanges]);
 
-  function getPhaseProgressForStudent(studentName: string, phase: EvaluationPhase) {
+  function getPhaseProgressForStudent(studentId: string, phase: EvaluationPhase) {
     return getCompletion(
-      getEvaluation(evaluations, studentName, phase.key),
+      getEvaluation(evaluations, studentId, phase.key),
       phase.plos.length,
     );
   }
 
-  function isPhaseEnabledForStudent(studentName: string, phaseKey: string) {
+  function isPhaseEnabledForStudent(studentId: string, phaseKey: string) {
     const phaseIndex = phases.findIndex((phase) => phase.key === phaseKey);
 
     if (phaseIndex <= 0) {
@@ -315,12 +326,12 @@ export function StudentEvaluationPanel({
       .slice(0, phaseIndex)
       .every(
         (previousPhase) =>
-          getPhaseProgressForStudent(studentName, previousPhase) === 100,
+          getPhaseProgressForStudent(studentId, previousPhase) === 100,
       );
   }
 
   function isPhaseEnabled(phaseKey: string) {
-    return isPhaseEnabledForStudent(selectedStudentName, phaseKey);
+    return isPhaseEnabledForStudent(selectedStudentId, phaseKey);
   }
 
   function updateEvaluation(updates: Partial<PhaseEvaluation>) {
@@ -333,14 +344,14 @@ export function StudentEvaluationPanel({
     setEvaluations((current) => {
       const currentEvaluation = getEvaluation(
         current,
-        selectedStudentName,
+        selectedStudentId,
         selectedPhaseKey,
       );
 
       return {
         ...current,
-        [selectedStudentName]: {
-          ...current[selectedStudentName],
+        [selectedStudentId]: {
+          ...current[selectedStudentId],
           [selectedPhaseKey]: {
             ...currentEvaluation,
             ...updates,
@@ -365,12 +376,12 @@ export function StudentEvaluationPanel({
     }
   }
 
-  function handleStudentChange(studentName: string) {
-    setSelectedStudentName(studentName);
+  function handleStudentChange(studentId: string) {
+    setSelectedStudentId(studentId);
 
-    if (!isPhaseEnabledForStudent(studentName, selectedPhaseKey)) {
+    if (!isPhaseEnabledForStudent(studentId, selectedPhaseKey)) {
       const firstOpenPhase =
-        phases.find((phase) => isPhaseEnabledForStudent(studentName, phase.key)) ??
+        phases.find((phase) => isPhaseEnabledForStudent(studentId, phase.key)) ??
         phases[0];
 
       setSelectedPhaseKey(firstOpenPhase.key);
@@ -379,8 +390,8 @@ export function StudentEvaluationPanel({
 
     const firstUnsavedEnabledPhase = phases.find(
       (phase) =>
-        isPhaseEnabledForStudent(studentName, phase.key) &&
-        !savedEvaluationKeys[`${studentName}-${phase.key}`],
+        isPhaseEnabledForStudent(studentId, phase.key) &&
+        !savedEvaluationKeys[`${studentId}-${phase.key}`],
     );
 
     if (firstUnsavedEnabledPhase) {
@@ -410,10 +421,10 @@ export function StudentEvaluationPanel({
       phases: [
         {
           phaseId: selectedPhase.id,
-          students: [selectedStudentName].map((studentName) => {
+          students: [selectedStudentId].map((studentId) => {
             const evaluation = getEvaluation(
               evaluations,
-              studentName,
+              studentId,
               selectedPhase.key,
             );
             const phaseEvaluations = selectedPhase.plos.map((plo) => ({
@@ -422,7 +433,8 @@ export function StudentEvaluationPanel({
             }));
 
             return {
-              studentName,
+              studentId,
+              studentName: selectedStudentName,
               evaluations: phaseEvaluations,
               totalMarks: phaseEvaluations.reduce(
                 (total, score) => total + score.obtainedMarks,
@@ -462,9 +474,9 @@ export function StudentEvaluationPanel({
 
     const nextUnsavedPhase = phases.find(
       (phase) =>
-        isPhaseEnabledForStudent(selectedStudentName, phase.key) &&
+        isPhaseEnabledForStudent(selectedStudentId, phase.key) &&
         phase.key !== selectedPhaseKey &&
-        !savedEvaluationKeys[`${selectedStudentName}-${phase.key}`],
+        !savedEvaluationKeys[`${selectedStudentId}-${phase.key}`],
     );
 
     if (nextUnsavedPhase) {
@@ -504,18 +516,18 @@ export function StudentEvaluationPanel({
             </p>
             <div className="mt-3 space-y-2">
               {students.map((student) => {
-                const active = student === selectedStudentName;
+                const active = student.id === selectedStudentId;
                 const progress = getOverallStudentProgress(
                   evaluations,
-                  student,
+                  student.id,
                   phases,
                 );
 
                 return (
                   <button
-                    key={student}
+                    key={student.id}
                     type="button"
-                    onClick={() => handleStudentChange(student)}
+                    onClick={() => handleStudentChange(student.id)}
                     className={`w-full rounded-md border px-3 py-2.5 text-left transition ${
                       active
                         ? "border-accent bg-accent-soft"
@@ -523,7 +535,7 @@ export function StudentEvaluationPanel({
                     }`}
                   >
                     <span className="block truncate text-sm font-semibold text-ink">
-                      {student}
+                      {student.name}
                     </span>
                     <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-surface-muted">
                       <span
@@ -568,7 +580,7 @@ export function StudentEvaluationPanel({
 
             return (
               <fieldset
-                key={`${selectedPhase.key}-${selectedStudentName}-${criterion.code}`}
+                key={`${selectedPhase.key}-${selectedStudentId}-${criterion.code}`}
                 className={`rounded-md border bg-surface px-4 py-3 shadow-sm ${
                   missingRating ? "border-danger" : "border-border"
                 }`}
@@ -587,7 +599,7 @@ export function StudentEvaluationPanel({
                     <label key={marks} className="cursor-pointer">
                       <input
                         type="radio"
-                        name={`${selectedPhase.key}-${selectedStudentName}-${criterion.code}`}
+                        name={`${selectedPhase.key}-${selectedStudentId}-${criterion.code}`}
                         value={marks}
                         checked={selectedEvaluation.ratings[criterion.code] === marks}
                         disabled={saved}

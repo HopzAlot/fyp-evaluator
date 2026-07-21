@@ -21,6 +21,7 @@ export type EvaluationScoreInput = {
 };
 
 export type EvaluationStudentInput = {
+  studentId: string;
   studentName: string;
   evaluations: EvaluationScoreInput[];
   totalMarks: number;

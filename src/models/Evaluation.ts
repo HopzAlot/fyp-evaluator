@@ -13,6 +13,7 @@ type EvaluationScore = {
 };
 
 type EvaluationStudent = {
+  studentId: string;
   studentName: string;
   evaluations: EvaluationScore[];
   totalMarks: number;
@@ -49,6 +50,11 @@ const EvaluationScoreSchema = new Schema<EvaluationScore>(
 
 const EvaluationStudentSchema = new Schema<EvaluationStudent>(
   {
+    studentId: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     studentName: {
       type: String,
       required: true,
