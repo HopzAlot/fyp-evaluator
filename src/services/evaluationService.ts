@@ -10,6 +10,7 @@ import { ProjectModel } from "@/models/Project";
 import { syncProjectStatus } from "@/services/projectService";
 import type {
   EvaluationPhase,
+  EvaluationPhaseOption,
   EvaluationPlo,
   SavedPhaseEvaluation,
   SaveProjectEvaluationRequest,
@@ -86,6 +87,21 @@ export async function getEvaluationPhasesWithPlos() {
   return (phases as unknown as PopulatedEvaluationPhase[]).map(
     toEvaluationPhase,
   );
+}
+
+export async function getEvaluationPhaseOptions(): Promise<
+  EvaluationPhaseOption[]
+> {
+  await connectDatabase();
+
+  const phases = await EvaluationPhaseModel.find()
+    .sort({ order: 1 })
+    .select("title");
+
+  return phases.map((phase) => ({
+    id: phase._id.toString(),
+    title: phase.title,
+  }));
 }
 
 export async function getSavedProjectEvaluations(
@@ -276,12 +292,14 @@ function getStudentFromEvaluation(
   );
 }
 
-export async function buildEvaluationResultsExportHtml() {
+export async function buildEvaluationResultsExportHtml(phaseIds?: string[]) {
   await connectDatabase();
 
   const [evaluatedProjectIds, phases, plos] = await Promise.all([
     EvaluationModel.distinct("projectId"),
-    EvaluationPhaseModel.find()
+    EvaluationPhaseModel.find(
+      phaseIds?.length ? { _id: { $in: phaseIds } } : {},
+    )
       .sort({ order: 1 })
       .populate<{ plos: PloDocument[] }>({
         path: "plos",

@@ -15,6 +15,11 @@ export type EvaluationPhase = {
   plos: EvaluationPlo[];
 };
 
+export type EvaluationPhaseOption = Pick<
+  EvaluationPhase,
+  "id" | "title"
+>;
+
 export type EvaluationScoreInput = {
   ploId: string;
   obtainedMarks: number;

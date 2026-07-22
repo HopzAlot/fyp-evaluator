@@ -2,15 +2,18 @@
 
 import { useMemo, useState } from "react";
 import { ProjectEditRow } from "@/components/layout/admin/ProjectEditRow";
+import { EvaluationExportDialog } from "@/components/layout/admin/EvaluationExportDialog";
 import { ProjectImportPanel } from "@/components/layout/admin/ProjectImportPanel";
 import { Button } from "@/components/ui/Button";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { useRouteRefresh } from "@/hooks/useRouteRefresh";
+import type { EvaluationPhaseOption } from "@/types/evaluation";
 import type { Project, ProjectInput, ProjectStatus } from "@/types/project";
 import { filterProjects } from "@/utils/search/searchFilters";
 
 type AdminProjectsManagerProps = {
   initialProjects: Project[];
+  phases: EvaluationPhaseOption[];
 };
 
 const statusStyles: Record<ProjectStatus, string> = {
@@ -20,6 +23,7 @@ const statusStyles: Record<ProjectStatus, string> = {
 
 export function AdminProjectsManager({
   initialProjects,
+  phases,
 }: AdminProjectsManagerProps) {
   const { isRefreshing, refreshRoute } = useRouteRefresh();
   const [projects, setProjects] = useState<Project[]>(initialProjects);
@@ -31,6 +35,7 @@ export function AdminProjectsManager({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
@@ -59,12 +64,20 @@ export function AdminProjectsManager({
     refreshRoute();
   };
 
-  const exportEvaluationResults = async () => {
+  const exportEvaluationResults = async (selectedPhaseIds: string[]) => {
     setError("");
     setMessage("");
     setExporting(true);
 
-    const response = await fetch("/api/admin/projects/export-evaluations");
+    const searchParams = new URLSearchParams();
+
+    selectedPhaseIds.forEach((phaseId) =>
+      searchParams.append("phaseId", phaseId),
+    );
+
+    const response = await fetch(
+      `/api/admin/projects/export-evaluations?${searchParams.toString()}`,
+    );
 
     if (!response.ok) {
       const data = (await response.json()) as { message?: string };
@@ -84,6 +97,7 @@ export function AdminProjectsManager({
     link.remove();
     window.URL.revokeObjectURL(url);
     setExporting(false);
+    setExportOpen(false);
     setMessage("Evaluation results exported successfully.");
   };
 
@@ -374,9 +388,11 @@ export function AdminProjectsManager({
           </Button>
           <Button
             type="button"
-            loading={exporting}
-            loadingText="Exporting"
-            onClick={exportEvaluationResults}
+            onClick={() => {
+              setError("");
+              setMessage("");
+              setExportOpen(true);
+            }}
             className="bg-accent hover:bg-accent"
           >
             Export evaluation results
@@ -411,6 +427,16 @@ export function AdminProjectsManager({
           renderExpandedRow={renderProjectEditForm}
         />
       </section>
+
+      {exportOpen ? (
+        <EvaluationExportDialog
+          phases={phases}
+          exporting={exporting}
+          error={error}
+          onClose={() => setExportOpen(false)}
+          onExport={exportEvaluationResults}
+        />
+      ) : null}
 
     </>
   );

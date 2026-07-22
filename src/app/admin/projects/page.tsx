@@ -1,8 +1,12 @@
 import { AdminProjectsManager } from "@/components/layout/admin/AdminProjectsManager";
+import { getEvaluationPhaseOptions } from "@/services/evaluationService";
 import { getAdminProjects } from "@/services/projectService";
 
 export default async function AdminProjectsPage() {
-  const projects = await getAdminProjects();
+  const [projects, phases] = await Promise.all([
+    getAdminProjects(),
+    getEvaluationPhaseOptions(),
+  ]);
   const projectsKey = projects
     .map((project) => `${project.id}:${project.status}`)
     .join("|");
@@ -21,7 +25,11 @@ export default async function AdminProjectsPage() {
         </div>
       </section>
 
-      <AdminProjectsManager key={projectsKey} initialProjects={projects} />
+      <AdminProjectsManager
+        key={projectsKey}
+        initialProjects={projects}
+        phases={phases}
+      />
     </div>
   );
 }
