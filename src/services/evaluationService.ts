@@ -7,6 +7,7 @@ import {
 } from "@/models/EvaluationPhase";
 import { PloModel, type PloDocument } from "@/models/Plo";
 import { ProjectModel } from "@/models/Project";
+import { UserModel } from "@/models/User";
 import { syncProjectStatus } from "@/services/projectService";
 import type {
   EvaluationPhase,
@@ -295,7 +296,7 @@ function getStudentFromEvaluation(
 export async function buildEvaluationResultsExportHtml(phaseIds?: string[]) {
   await connectDatabase();
 
-  const [evaluatedProjectIds, phases, plos] = await Promise.all([
+  const [evaluatedProjectIds, phases, plos, totalFaculty] = await Promise.all([
     EvaluationModel.distinct("projectId"),
     EvaluationPhaseModel.find(
       phaseIds?.length ? { _id: { $in: phaseIds } } : {},
@@ -306,6 +307,7 @@ export async function buildEvaluationResultsExportHtml(phaseIds?: string[]) {
         options: { sort: { order: 1 } },
       }),
     PloModel.find().sort({ order: 1 }),
+    UserModel.countDocuments({ role: "faculty", status: "active" }),
   ]);
   const projects = await ProjectModel.find({
     _id: { $in: evaluatedProjectIds },
@@ -356,7 +358,7 @@ export async function buildEvaluationResultsExportHtml(phaseIds?: string[]) {
       rows.push(
         `<tr class="student"><td>${escapeHtml(studentName)}</td>${exportPlos
           .map((plo) => `<td>${escapeHtml(plo.code)}</td>`)
-          .join("")}<td>Marks</td><td>Faculty Evaluators</td></tr>`,
+          .join("")}<td>Marks</td><td>Faculty Evaluators (out of ${totalFaculty})</td></tr>`,
       );
 
       for (const phase of exportPhases) {
