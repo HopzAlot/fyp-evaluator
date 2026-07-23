@@ -70,10 +70,18 @@ const admin = await users.findOne({ role: "admin", status: "active" });
 const faculty = await users.findOne({ role: "faculty", status: "active" });
 const phaseDocuments = await phases.find().sort({ order: 1 }).limit(2).toArray();
 const totalPhaseCount = await phases.countDocuments();
+const existingPendingProjects = await projects.countDocuments({
+  deletionPending: true,
+});
 
 assert(admin, "An active admin is required");
 assert(faculty, "An active faculty member is required");
 assert.equal(phaseDocuments.length, 2, "At least two phases are required");
+assert.equal(
+  existingPendingProjects,
+  0,
+  "Regression aborted because real projects are pending deletion",
+);
 
 const runId = new Types.ObjectId().toString();
 const projectId = new Types.ObjectId();
@@ -366,25 +374,20 @@ try {
     "Projects pending deletion must be hidden from faculty",
   );
   const pendingAdminResponse = await request("/admin/projects", adminCookie);
-  const pendingAdminHtml = await pendingAdminResponse.text();
-
-  assert(
-    pendingAdminHtml.includes(
-      "Pending projects will be deleted after their evaluations are removed",
-    ),
-    "Admin should see pending deletion guidance",
+  assert.equal(
+    pendingAdminResponse.status,
+    200,
+    "Refreshing admin projects should process pending deletion",
   );
-
-  const retryDeleteResponse = await request(
-    `/api/admin/projects/${orphanProjectId}`,
-    adminCookie,
-    { method: "DELETE" },
-  );
-  assert.equal(retryDeleteResponse.status, 200);
   assert.equal(
     await evaluations.countDocuments({ projectId: orphanProjectId }),
     0,
-    "Retrying a pending project deletion must clean its evaluations",
+    "Refreshing must clean pending project evaluations",
+  );
+  assert.equal(
+    await projects.countDocuments({ _id: orphanProjectId }),
+    0,
+    "Refreshing must remove the pending project",
   );
 
   console.log("Regression checks passed.");

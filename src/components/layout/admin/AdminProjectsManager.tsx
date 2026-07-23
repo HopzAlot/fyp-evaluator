@@ -323,14 +323,16 @@ export function AdminProjectsManager({
           >
             Edit
           </button>
-          <button
-            type="button"
-            onClick={() => deleteProject(project.id)}
-            disabled={deleting}
-            className="h-9 rounded-md border border-border px-3 text-sm font-semibold text-danger transition hover:bg-danger/10 disabled:cursor-not-allowed disabled:text-muted"
-          >
-            {project.deletionPending ? "Retry delete" : "Delete"}
-          </button>
+          {!project.deletionPending ? (
+            <button
+              type="button"
+              onClick={() => deleteProject(project.id)}
+              disabled={deleting}
+              className="h-9 rounded-md border border-border px-3 text-sm font-semibold text-danger transition hover:bg-danger/10 disabled:cursor-not-allowed disabled:text-muted"
+            >
+              Delete
+            </button>
+          ) : null}
         </div>
       ),
     },
@@ -375,8 +377,7 @@ export function AdminProjectsManager({
               {hasPendingDeletions ? (
                 <p className="mt-2 text-sm font-medium text-highlight">
                   Pending projects will be deleted after their evaluations are
-                  removed. Refresh to check their status or retry deletion if
-                  they remain.
+                  removed. Refresh to check their status.
                 </p>
               ) : null}
             </div>

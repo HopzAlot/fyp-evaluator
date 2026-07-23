@@ -72,7 +72,7 @@ project no longer existed.
 **Fix:** Deletion first marks the project as pending, hides it from faculty,
 and removes its evaluations before removing the project itself. If either
 database deletion fails, the project remains visible to the admin after
-refresh, allowing the same delete action to safely finish the cleanup.
+refresh. Refreshing automatically attempts the pending cleanup again.
 
 ### 8. Temporary `/api/me` failures appeared as logout
 

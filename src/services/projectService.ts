@@ -274,6 +274,23 @@ async function getFacultyProjectsWithEvaluationProgress(facultyId: string) {
 export async function getAdminProjects() {
   await connectDatabase();
   await backfillMissingProjectKeys();
+  const pendingProjectIds = await ProjectModel.find({
+    deletionPending: true,
+  }).distinct("_id");
+
+  if (pendingProjectIds.length > 0) {
+    try {
+      await EvaluationModel.deleteMany({
+        projectId: { $in: pendingProjectIds },
+      });
+      await ProjectModel.deleteMany({
+        _id: { $in: pendingProjectIds },
+        deletionPending: true,
+      });
+    } catch (error) {
+      console.error("Pending project cleanup error", error);
+    }
+  }
 
   const projects = await ProjectModel.find().sort({ createdAt: -1 });
 

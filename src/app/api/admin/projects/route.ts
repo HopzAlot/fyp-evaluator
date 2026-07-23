@@ -20,7 +20,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json(
       {
         message:
-          "Selected projects are pending deletion while their evaluations are removed. Refresh to check their status, then retry any that remain.",
+          "Selected projects are pending deletion while their evaluations are removed. Refresh to check their status.",
       },
       { status: 500 },
     );
