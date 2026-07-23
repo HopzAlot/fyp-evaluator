@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isValidObjectId } from "mongoose";
 import {
   deleteProjectById,
+  ProjectDeletionPendingError,
   updateProjectById,
 } from "@/services/projectService";
 import type { ProjectUpdateInput } from "@/types/project";
@@ -129,11 +130,21 @@ export async function DELETE(
     return NextResponse.json({ deletedCount });
   } catch (error) {
     console.error("Admin project delete error", error);
+
+    if (error instanceof ProjectDeletionPendingError) {
+      return NextResponse.json(
+        {
+          pending: true,
+          projectIds: error.projectIds,
+          message:
+            "Project is still being deleted. Refresh to check its status.",
+        },
+        { status: 500 },
+      );
+    }
+
     return NextResponse.json(
-      {
-        message:
-          "Project deletion is pending while its evaluations are removed. Refresh to check its status.",
-      },
+      { message: "Unable to delete project right now" },
       { status: 500 },
     );
   }

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { deleteProjectsByIds } from "@/services/projectService";
+import {
+  deleteProjectsByIds,
+  ProjectDeletionPendingError,
+} from "@/services/projectService";
 
 export async function DELETE(request: Request) {
   try {
@@ -17,11 +20,21 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ deletedCount });
   } catch (error) {
     console.error("Admin projects bulk delete error", error);
+
+    if (error instanceof ProjectDeletionPendingError) {
+      return NextResponse.json(
+        {
+          pending: true,
+          projectIds: error.projectIds,
+          message:
+            "Selected projects are still being deleted. Refresh to check their status.",
+        },
+        { status: 500 },
+      );
+    }
+
     return NextResponse.json(
-      {
-        message:
-          "Selected projects are pending deletion while their evaluations are removed. Refresh to check their status.",
-      },
+      { message: "Unable to delete selected projects right now" },
       { status: 500 },
     );
   }

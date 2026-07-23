@@ -24,6 +24,12 @@ type EvaluatedStudentPhase = {
   };
 };
 
+export class ProjectDeletionPendingError extends Error {
+  constructor(public projectIds: string[]) {
+    super("Project deletion is pending");
+  }
+}
+
 function normalizeProjectKeyPart(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
@@ -391,24 +397,30 @@ export async function deleteProjectById(projectId: string) {
   }
 
   await connectDatabase();
-  const project = await ProjectModel.findByIdAndUpdate(
-    projectId,
-    { $set: { deletionPending: true } },
-    { returnDocument: "after" },
-  );
-
-  await EvaluationModel.deleteMany({ projectId });
+  const project = await ProjectModel.exists({ _id: projectId });
 
   if (!project) {
+    await EvaluationModel.deleteMany({ projectId });
     return 0;
   }
 
-  const result = await ProjectModel.deleteOne({
-    _id: projectId,
-    deletionPending: true,
-  });
+  try {
+    await EvaluationModel.deleteMany({ projectId });
+    const result = await ProjectModel.deleteOne({ _id: projectId });
 
-  return result.deletedCount;
+    return result.deletedCount;
+  } catch (error) {
+    const pendingResult = await ProjectModel.updateOne(
+      { _id: projectId },
+      { $set: { deletionPending: true } },
+    );
+
+    if (pendingResult.matchedCount) {
+      throw new ProjectDeletionPendingError([projectId]);
+    }
+
+    throw error;
+  }
 }
 
 export async function updateProjectById(
@@ -429,7 +441,7 @@ export async function updateProjectById(
   }
 
   if (currentProject.deletionPending) {
-    throw new Error("Project deletion is pending. Retry deleting the project");
+    throw new Error("Project deletion is pending. Refresh to check its status");
   }
 
   const studentIds = resolveStudentIdsForUpdate(
@@ -535,17 +547,33 @@ export async function deleteProjectsByIds(projectIds: string[]) {
   }
 
   await connectDatabase();
-  await ProjectModel.updateMany(
-    { _id: { $in: validIds } },
-    { $set: { deletionPending: true } },
-  );
+  const existingProjectIds = (
+    await ProjectModel.find({ _id: { $in: validIds } }).select("_id")
+  ).map((project) => project._id.toString());
 
-  await EvaluationModel.deleteMany({ projectId: { $in: validIds } });
+  try {
+    await EvaluationModel.deleteMany({ projectId: { $in: validIds } });
+    const result = await ProjectModel.deleteMany({
+      _id: { $in: existingProjectIds },
+    });
 
-  const result = await ProjectModel.deleteMany({
-    _id: { $in: validIds },
-    deletionPending: true,
-  });
+    return result.deletedCount;
+  } catch (error) {
+    const pendingProjects = await ProjectModel.find({
+      _id: { $in: existingProjectIds },
+    }).select("_id");
+    const pendingProjectIds = pendingProjects.map((project) =>
+      project._id.toString(),
+    );
 
-  return result.deletedCount;
+    if (pendingProjectIds.length > 0) {
+      await ProjectModel.updateMany(
+        { _id: { $in: pendingProjectIds } },
+        { $set: { deletionPending: true } },
+      );
+      throw new ProjectDeletionPendingError(pendingProjectIds);
+    }
+
+    throw error;
+  }
 }

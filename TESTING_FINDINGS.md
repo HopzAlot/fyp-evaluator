@@ -69,10 +69,10 @@ evaluation writes also verify active status.
 deletion failed, retrying did not clean the orphaned records because the
 project no longer existed.
 
-**Fix:** Deletion first marks the project as pending, hides it from faculty,
-and removes its evaluations before removing the project itself. If either
-database deletion fails, the project remains visible to the admin after
-refresh. Refreshing automatically attempts the pending cleanup again.
+**Fix:** Normal deletion removes evaluations and then the project without
+writing a pending status. Only when either database deletion fails is the
+remaining project marked pending and hidden from faculty. The admin receives
+Refresh guidance, and refreshing automatically attempts the cleanup again.
 
 ### 8. Temporary `/api/me` failures appeared as logout
 

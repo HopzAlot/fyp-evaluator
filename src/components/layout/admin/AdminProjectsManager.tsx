@@ -47,9 +47,14 @@ export function AdminProjectsManager({
     () => filterProjects(projects, searchTerm),
     [projects, searchTerm],
   );
+  const selectableFilteredProjects = filteredProjects.filter(
+    (project) => !project.deletionPending,
+  );
   const allSelected =
-    filteredProjects.length > 0 &&
-    filteredProjects.every((project) => selectedIdSet.has(project.id));
+    selectableFilteredProjects.length > 0 &&
+    selectableFilteredProjects.every((project) =>
+      selectedIdSet.has(project.id),
+    );
   const counts = useMemo(
     () => ({
       total: projects.length,
@@ -117,7 +122,7 @@ export function AdminProjectsManager({
   };
 
   const toggleAllProjects = () => {
-    const visibleIds = filteredProjects.map((project) => project.id);
+    const visibleIds = selectableFilteredProjects.map((project) => project.id);
 
     if (allSelected) {
       setSelectedIds((currentIds) =>
@@ -139,11 +144,35 @@ export function AdminProjectsManager({
     const response = await fetch(`/api/admin/projects/${projectId}`, {
       method: "DELETE",
     });
-    const data = (await response.json()) as { message?: string };
+    const data = (await response.json()) as {
+      message?: string;
+      pending?: boolean;
+      projectIds?: string[];
+    };
 
     setDeleting(false);
 
     if (!response.ok) {
+      if (data.pending) {
+        const pendingIds = new Set(data.projectIds ?? [projectId]);
+
+        setProjects((currentProjects) =>
+          currentProjects.map((project) =>
+            pendingIds.has(project.id)
+              ? { ...project, deletionPending: true }
+              : project,
+          ),
+        );
+        setSelectedIds((currentIds) =>
+          currentIds.filter((id) => !pendingIds.has(id)),
+        );
+        setMessage(
+          data.message ??
+            "Project is still being deleted. Refresh to check its status.",
+        );
+        return;
+      }
+
       setError(data.message ?? "Unable to delete project");
       return;
     }
@@ -175,11 +204,31 @@ export function AdminProjectsManager({
     const data = (await response.json()) as {
       deletedCount?: number;
       message?: string;
+      pending?: boolean;
+      projectIds?: string[];
     };
 
     setDeleting(false);
 
     if (!response.ok) {
+      if (data.pending) {
+        const pendingIds = new Set(data.projectIds ?? selectedIds);
+
+        setProjects((currentProjects) =>
+          currentProjects.map((project) =>
+            pendingIds.has(project.id)
+              ? { ...project, deletionPending: true }
+              : project,
+          ),
+        );
+        setSelectedIds([]);
+        setMessage(
+          data.message ??
+            "Selected projects are still being deleted. Refresh to check their status.",
+        );
+        return;
+      }
+
       setError(data.message ?? "Unable to delete selected projects");
       return;
     }
@@ -266,6 +315,7 @@ export function AdminProjectsManager({
           type="checkbox"
           checked={selectedIdSet.has(project.id)}
           onChange={() => toggleProject(project.id)}
+          disabled={project.deletionPending}
           className="h-4 w-4 rounded border-border accent-primary"
           aria-label={`Select ${project.title}`}
         />
