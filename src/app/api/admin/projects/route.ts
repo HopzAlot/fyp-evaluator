@@ -18,7 +18,10 @@ export async function DELETE(request: Request) {
   } catch (error) {
     console.error("Admin projects bulk delete error", error);
     return NextResponse.json(
-      { message: "Unable to delete selected projects right now" },
+      {
+        message:
+          "Selected projects are pending deletion while their evaluations are removed. Refresh to check their status, then retry any that remain.",
+      },
       { status: 500 },
     );
   }

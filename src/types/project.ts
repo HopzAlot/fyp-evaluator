@@ -16,9 +16,14 @@ export type ProjectInput = {
   sdg: string;
 };
 
+export type ProjectUpdateInput = ProjectInput & {
+  studentIds: string[];
+};
+
 export type Project = ProjectInput & {
   id: string;
   studentIds: string[];
   status: ProjectStatus;
+  deletionPending: boolean;
   evaluationProgress?: ProjectEvaluationProgress;
 };

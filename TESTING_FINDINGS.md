@@ -41,8 +41,9 @@ replacing students could make old evaluation marks appear against a different
 student.
 
 **Fix:** Added stable project-owned student IDs and migrated existing projects
-and evaluations. Reordering students preserves their IDs. Adding, removing, or
-renaming students is blocked after evaluation begins.
+and evaluations. Renaming preserves the ID and saved marks, removing a student
+also removes that ID from saved evaluations, and adding a student creates a new
+ID with no marks so project progress is recalculated.
 
 ### 5. Concurrent evaluation saves could lose marks
 
@@ -98,7 +99,7 @@ The live regression test verified:
 - Saved marks cannot be submitted again
 - Later phases cannot be submitted before earlier phases
 - Forged students and nonexistent projects are rejected
-- Project students are locked once evaluation begins
+- Student rename, removal, addition, and progress recalculation use stable IDs
 - Inactive access and refresh tokens are rejected
 - Normal project deletion removes evaluations
 - Retrying deletion cleans evaluations after a simulated partial failure

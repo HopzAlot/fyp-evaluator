@@ -8,6 +8,7 @@ import type {
   ProjectEvaluationProgress,
   ProjectInput,
   ProjectStatus,
+  ProjectUpdateInput,
 } from "@/types/project";
 
 type EvaluationPhaseSummary = {
@@ -31,36 +32,27 @@ function createStudentIds(count: number) {
   return Array.from({ length: count }, () => new Types.ObjectId().toString());
 }
 
-function getStudentIdsForUpdate(
-  currentStudents: string[],
+function resolveStudentIdsForUpdate(
   currentStudentIds: string[],
-  nextStudents: string[],
+  submittedStudentIds: string[],
 ) {
-  const idsByName = new Map<string, string[]>();
+  const currentIds = new Set(currentStudentIds);
+  const usedIds = new Set<string>();
 
-  currentStudents.forEach((student, index) => {
-    const name = normalizeProjectKeyPart(student);
-    const ids = idsByName.get(name) ?? [];
+  return submittedStudentIds.map((submittedId) => {
+    const studentId = submittedId.trim();
 
-    ids.push(currentStudentIds[index] ?? new Types.ObjectId().toString());
-    idsByName.set(name, ids);
+    if (!studentId) {
+      return new Types.ObjectId().toString();
+    }
+
+    if (!currentIds.has(studentId) || usedIds.has(studentId)) {
+      throw new Error("Invalid student identity data");
+    }
+
+    usedIds.add(studentId);
+    return studentId;
   });
-
-  return nextStudents.map((student) => {
-    const ids = idsByName.get(normalizeProjectKeyPart(student));
-
-    return ids?.shift() ?? new Types.ObjectId().toString();
-  });
-}
-
-function haveSameStudents(first: string[], second: string[]) {
-  const firstNames = first.map(normalizeProjectKeyPart).sort();
-  const secondNames = second.map(normalizeProjectKeyPart).sort();
-
-  return (
-    firstNames.length === secondNames.length &&
-    firstNames.every((student, index) => student === secondNames[index])
-  );
 }
 
 export function buildProjectKey(
@@ -223,6 +215,7 @@ export function toProject(project: ProjectDocument): Project {
     industrialPartner: project.industrialPartner,
     sdg: project.sdg,
     status: project.status === "completed" ? "completed" : "in progress",
+    deletionPending: project.deletionPending,
   };
 }
 
@@ -403,7 +396,7 @@ export async function deleteProjectById(projectId: string) {
 
 export async function updateProjectById(
   projectId: string,
-  values: ProjectInput,
+  values: ProjectUpdateInput,
 ) {
   if (!isValidObjectId(projectId)) {
     return null;
@@ -422,18 +415,30 @@ export async function updateProjectById(
     throw new Error("Project deletion is pending. Retry deleting the project");
   }
 
-  const hasEvaluations = Boolean(
-    await EvaluationModel.exists({ projectId: currentProject._id }),
+  const studentIds = resolveStudentIdsForUpdate(
+    currentProject.studentIds,
+    values.studentIds,
   );
-
-  if (
-    hasEvaluations &&
-    !haveSameStudents(currentProject.students, values.students)
-  ) {
-    throw new Error(
-      "Students cannot be added, removed, or renamed after evaluation has started",
+  const nextStudentIds = new Set(studentIds);
+  const removedStudentIds = currentProject.studentIds.filter(
+    (studentId) => !nextStudentIds.has(studentId),
+  );
+  const currentNameByStudentId = new Map(
+    currentProject.studentIds.map((studentId, index) => [
+      studentId,
+      currentProject.students[index],
+    ]),
+  );
+  const renamedStudents = studentIds
+    .map((studentId, index) => ({
+      studentId,
+      studentName: values.students[index],
+    }))
+    .filter(
+      (student) =>
+        currentNameByStudentId.has(student.studentId) &&
+        currentNameByStudentId.get(student.studentId) !== student.studentName,
     );
-  }
 
   const projectKey = buildProjectKey(values);
   const existingProjects = await ProjectModel.find({
@@ -453,11 +458,7 @@ export async function updateProjectById(
     projectId,
     {
       ...values,
-      studentIds: getStudentIdsForUpdate(
-        currentProject.students,
-        currentProject.studentIds,
-        values.students,
-      ),
+      studentIds,
       projectKey,
     },
     {
@@ -467,6 +468,42 @@ export async function updateProjectById(
   );
 
   if (project) {
+    if (removedStudentIds.length > 0) {
+      await EvaluationModel.updateMany(
+        { projectId: project._id },
+        {
+          $pull: {
+            students: { studentId: { $in: removedStudentIds } },
+          },
+        },
+      );
+      await EvaluationModel.deleteMany({
+        projectId: project._id,
+        "students.0": { $exists: false },
+      });
+    }
+
+    await Promise.all(
+      renamedStudents.map((student) =>
+        EvaluationModel.updateMany(
+          {
+            projectId: project._id,
+            "students.studentId": student.studentId,
+          },
+          {
+            $set: {
+              "students.$[savedStudent].studentName": student.studentName,
+            },
+          },
+          {
+            arrayFilters: [
+              { "savedStudent.studentId": student.studentId },
+            ],
+          },
+        ),
+      ),
+    );
+
     project.status = (await syncProjectStatus(projectId)) ?? project.status;
   }
 

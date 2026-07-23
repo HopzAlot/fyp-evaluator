@@ -1,20 +1,29 @@
 import { NextResponse } from "next/server";
+import { isValidObjectId } from "mongoose";
 import {
   deleteProjectById,
   updateProjectById,
 } from "@/services/projectService";
-import type { ProjectInput } from "@/types/project";
+import type { ProjectUpdateInput } from "@/types/project";
 import { normalizeText } from "@/utils/normalization/facultyNormalization";
 
-function validateProjectPayload(payload: unknown): ProjectInput {
-  const values = payload as Partial<ProjectInput>;
+function validateProjectPayload(payload: unknown): ProjectUpdateInput {
+  const values = payload as Partial<ProjectUpdateInput>;
   const title = normalizeText(values.title ?? "");
-  const students = Array.isArray(values.students)
-    ? values.students
-        .slice(0, 4)
-        .map((student) => normalizeText(student ?? ""))
-        .filter(Boolean)
+  const rawStudents = Array.isArray(values.students)
+    ? values.students.slice(0, 4)
     : [];
+  const rawStudentIds = Array.isArray(values.studentIds)
+    ? values.studentIds.slice(0, 4)
+    : [];
+  const studentRows = rawStudents
+    .map((student, index) => ({
+      name: normalizeText(student ?? ""),
+      id: normalizeText(rawStudentIds[index] ?? ""),
+    }))
+    .filter((student) => student.name);
+  const students = studentRows.map((student) => student.name);
+  const studentIds = studentRows.map((student) => student.id);
   const supervisor = normalizeText(values.supervisor ?? "");
   const coSupervisor = normalizeText(values.coSupervisor ?? "");
   const industrialPartner = normalizeText(values.industrialPartner ?? "");
@@ -26,6 +35,20 @@ function validateProjectPayload(payload: unknown): ProjectInput {
 
   if (students.length === 0) {
     throw new Error("At least one student is required");
+  }
+
+  if (!Array.isArray(values.studentIds)) {
+    throw new Error("Student identity data is required");
+  }
+
+  if (studentIds.some((studentId) => studentId && !isValidObjectId(studentId))) {
+    throw new Error("Invalid student identity data");
+  }
+
+  const existingStudentIds = studentIds.filter(Boolean);
+
+  if (new Set(existingStudentIds).size !== existingStudentIds.length) {
+    throw new Error("A student cannot appear more than once");
   }
 
   if (!supervisor) {
@@ -43,6 +66,7 @@ function validateProjectPayload(payload: unknown): ProjectInput {
   return {
     title,
     students,
+    studentIds,
     supervisor,
     coSupervisor,
     industrialPartner,
@@ -106,7 +130,10 @@ export async function DELETE(
   } catch (error) {
     console.error("Admin project delete error", error);
     return NextResponse.json(
-      { message: "Unable to delete project right now" },
+      {
+        message:
+          "Project deletion is pending while its evaluations are removed. Refresh to check its status, then retry if it remains.",
+      },
       { status: 500 },
     );
   }

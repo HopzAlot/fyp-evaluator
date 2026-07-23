@@ -410,19 +410,22 @@ export async function buildEvaluationResultsExportHtml(phaseIds?: string[]) {
     const projectEvaluations = await EvaluationModel.find({
       projectId: project._id,
     });
-    const studentsById = new Map<string, string>();
+    const evaluatedStudentIds = new Set<string>();
 
     projectEvaluations.forEach((evaluation) => {
       evaluation.students.forEach((student) => {
-        studentsById.set(
-          student.studentId || student.studentName,
-          student.studentName,
-        );
+        if (student.studentId) {
+          evaluatedStudentIds.add(student.studentId);
+        }
       });
     });
 
-    const exportStudents = Array.from(studentsById.entries())
-      .map(([studentId, studentName]) => ({ studentId, studentName }))
+    const exportStudents = project.studentIds
+      .map((studentId, index) => ({
+        studentId,
+        studentName: project.students[index],
+      }))
+      .filter((student) => evaluatedStudentIds.has(student.studentId))
       .sort((studentA, studentB) =>
         studentA.studentName.localeCompare(studentB.studentName),
       );

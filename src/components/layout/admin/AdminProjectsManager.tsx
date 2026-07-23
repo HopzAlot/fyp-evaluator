@@ -8,7 +8,11 @@ import { Button } from "@/components/ui/Button";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { useRouteRefresh } from "@/hooks/useRouteRefresh";
 import type { EvaluationPhaseOption } from "@/types/evaluation";
-import type { Project, ProjectInput, ProjectStatus } from "@/types/project";
+import type {
+  Project,
+  ProjectStatus,
+  ProjectUpdateInput,
+} from "@/types/project";
 import { filterProjects } from "@/utils/search/searchFilters";
 
 type AdminProjectsManagerProps = {
@@ -56,6 +60,9 @@ export function AdminProjectsManager({
       industry: projects.filter((project) => project.industrialPartner).length,
     }),
     [projects],
+  );
+  const hasPendingDeletions = projects.some(
+    (project) => project.deletionPending,
   );
 
   const refreshProjects = () => {
@@ -195,7 +202,7 @@ export function AdminProjectsManager({
     setEditingProject(null);
   };
 
-  const saveProject = async (values: ProjectInput) => {
+  const saveProject = async (values: ProjectUpdateInput) => {
     if (!editingProject) {
       return;
     }
@@ -292,9 +299,13 @@ export function AdminProjectsManager({
       header: "Status",
       render: (project) => (
         <span
-          className={`inline-flex rounded-md border px-2.5 py-1 text-xs font-semibold capitalize ${statusStyles[project.status]}`}
+          className={`inline-flex rounded-md border px-2.5 py-1 text-xs font-semibold capitalize ${
+            project.deletionPending
+              ? "border-highlight/30 bg-highlight-soft text-ink"
+              : statusStyles[project.status]
+          }`}
         >
-          {project.status}
+          {project.deletionPending ? "Deletion pending" : project.status}
         </span>
       ),
     },
@@ -307,6 +318,7 @@ export function AdminProjectsManager({
           <button
             type="button"
             onClick={() => startEdit(project)}
+            disabled={project.deletionPending}
             className="h-9 rounded-md border border-border px-3 text-sm font-semibold text-ink transition hover:bg-surface-muted"
           >
             Edit
@@ -317,7 +329,7 @@ export function AdminProjectsManager({
             disabled={deleting}
             className="h-9 rounded-md border border-border px-3 text-sm font-semibold text-danger transition hover:bg-danger/10 disabled:cursor-not-allowed disabled:text-muted"
           >
-            Delete
+            {project.deletionPending ? "Retry delete" : "Delete"}
           </button>
         </div>
       ),
@@ -358,6 +370,13 @@ export function AdminProjectsManager({
               {message ? (
                 <p className="mt-2 text-sm font-medium text-accent">
                   {message}
+                </p>
+              ) : null}
+              {hasPendingDeletions ? (
+                <p className="mt-2 text-sm font-medium text-highlight">
+                  Pending projects will be deleted after their evaluations are
+                  removed. Refresh to check their status or retry deletion if
+                  they remain.
                 </p>
               ) : null}
             </div>

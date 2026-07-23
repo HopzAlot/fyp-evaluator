@@ -69,6 +69,7 @@ const evaluations = mongoose.connection.collection("evaluations");
 const admin = await users.findOne({ role: "admin", status: "active" });
 const faculty = await users.findOne({ role: "faculty", status: "active" });
 const phaseDocuments = await phases.find().sort({ order: 1 }).limit(2).toArray();
+const totalPhaseCount = await phases.countDocuments();
 
 assert(admin, "An active admin is required");
 assert(faculty, "An active faculty member is required");
@@ -252,14 +253,59 @@ try {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         ...project,
-        students: ["Renamed Student"],
+        students: ["Renamed Student", students[2], "Added Student"],
+        studentIds: [studentIds[0], studentIds[2], ""],
       }),
     },
   );
+  assert.equal(editResponse.status, 200, "The project roster should update");
+  const editResult = await editResponse.json();
+  const addedStudentId = editResult.project.studentIds[2];
+
   assert.equal(
-    editResponse.status,
-    400,
-    "Students must be locked once evaluation starts",
+    editResult.project.studentIds[0],
+    studentIds[0],
+    "Renaming must preserve the stable student id",
+  );
+  assert(
+    !studentIds.includes(addedStudentId),
+    "An added student must receive a new stable id",
+  );
+
+  const evaluationAfterRosterUpdate = await evaluations.findOne({
+    projectId,
+    facultyId: faculty._id,
+    phaseId: phaseDocuments[0]._id,
+  });
+
+  assert.deepEqual(
+    evaluationAfterRosterUpdate?.students.map((student) => ({
+      id: student.studentId,
+      name: student.studentName,
+    })),
+    [{ id: studentIds[0], name: "Renamed Student" }],
+    "Removed students must lose their evaluations while renamed students keep theirs",
+  );
+  assert.equal(
+    await evaluations.countDocuments({
+      projectId,
+      "students.studentId": addedStudentId,
+    }),
+    0,
+    "An added student must start without evaluations",
+  );
+
+  const projectsPageResponse = await request("/projects", facultyCookie);
+  const projectsPageHtml = await projectsPageResponse.text();
+  const projectRowStart = projectsPageHtml.indexOf(project.title);
+  const expectedProgress = Math.round((1 / (3 * totalPhaseCount)) * 100);
+
+  assert(projectRowStart >= 0, "Updated project should remain visible to faculty");
+  assert(
+    projectsPageHtml
+      .slice(projectRowStart, projectRowStart + 5000)
+      .includes(`${expectedProgress}%`),
+    "Adding a student must recalculate project evaluation progress",
   );
 
   const inactiveAccessResponse = await request(
@@ -318,6 +364,15 @@ try {
     pendingFacultyResponse.status,
     404,
     "Projects pending deletion must be hidden from faculty",
+  );
+  const pendingAdminResponse = await request("/admin/projects", adminCookie);
+  const pendingAdminHtml = await pendingAdminResponse.text();
+
+  assert(
+    pendingAdminHtml.includes(
+      "Pending projects will be deleted after their evaluations are removed",
+    ),
+    "Admin should see pending deletion guidance",
   );
 
   const retryDeleteResponse = await request(

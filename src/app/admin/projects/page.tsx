@@ -8,7 +8,10 @@ export default async function AdminProjectsPage() {
     getEvaluationPhaseOptions(),
   ]);
   const projectsKey = projects
-    .map((project) => `${project.id}:${project.status}`)
+    .map(
+      (project) =>
+        `${project.id}:${project.status}:${project.deletionPending}`,
+    )
     .join("|");
 
   return (

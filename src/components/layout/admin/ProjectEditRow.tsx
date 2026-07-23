@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { FormTextField } from "@/components/fields/FormTextField";
 import { Button } from "@/components/ui/Button";
-import type { Project, ProjectInput } from "@/types/project";
+import type { Project, ProjectInput, ProjectUpdateInput } from "@/types/project";
 import { noHtmlValidation } from "@/utils/validation/formValidation";
 
 const emptyProjectValues: ProjectInput = {
@@ -29,7 +29,7 @@ type ProjectEditRowProps = {
   project: Project;
   saving: boolean;
   onCancel: () => void;
-  onSave: (values: ProjectInput) => void;
+  onSave: (values: ProjectUpdateInput) => void;
 };
 
 export function ProjectEditRow({
@@ -40,6 +40,7 @@ export function ProjectEditRow({
 }: ProjectEditRowProps) {
   const {
     control,
+    getValues,
     handleSubmit,
     reset,
     formState: { isDirty, isSubmitting },
@@ -62,7 +63,10 @@ export function ProjectEditRow({
             return;
           }
 
-          onSave(values);
+          onSave({
+            ...values,
+            studentIds: [...project.studentIds, "", "", "", ""].slice(0, 4),
+          });
         })}
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -100,8 +104,12 @@ export function ProjectEditRow({
               label={`Student ${index + 1}`}
               placeholder={`Enter student ${index + 1}`}
               rules={{
-                required: index === 0 ? "At least one student is required" : false,
-                validate: noHtmlValidation,
+                validate: {
+                  noHtml: noHtmlValidation,
+                  atLeastOne: () =>
+                    getValues("students").some((student) => student.trim()) ||
+                    "At least one student is required",
+                },
               }}
             />
           ))}
