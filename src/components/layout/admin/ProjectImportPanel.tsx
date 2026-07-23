@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type DragEvent, type ReactNode } from "react";
+import Checkbox from "@mui/material/Checkbox";
 import { Button } from "@/components/ui/Button";
 import type { Project, ProjectInput } from "@/types/project";
 import { parseProjectCsv } from "@/utils/csv/projectCsv";
@@ -16,6 +17,14 @@ const csvColumns = [
   { name: "industrial partner", required: true },
   { name: "sdg", required: true },
 ];
+
+const checkboxStyles = {
+  color: "var(--muted)",
+  padding: 0,
+  "&.Mui-checked, &.MuiCheckbox-indeterminate": {
+    color: "var(--primary)",
+  },
+};
 
 type ProjectImportPanelProps = {
   children?: ReactNode;
@@ -35,6 +44,7 @@ export function ProjectImportPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [previewRows, setPreviewRows] = useState<ProjectInput[]>([]);
+  const [selectedRowIndexes, setSelectedRowIndexes] = useState<number[]>([]);
   const [importOpen, setImportOpen] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -44,6 +54,7 @@ export function ProjectImportPanel({
   const resetImportState = () => {
     setPreviewFile(null);
     setPreviewRows([]);
+    setSelectedRowIndexes([]);
     setDragActive(false);
     setImportError("");
     setImportMessage("");
@@ -76,10 +87,12 @@ export function ProjectImportPanel({
 
       setPreviewFile(file);
       setPreviewRows(rows);
+      setSelectedRowIndexes(rows.map((_, index) => index));
       setImportMessage(`${rows.length} project(s) ready to preview.`);
     } catch (previewError) {
       setPreviewFile(null);
       setPreviewRows([]);
+      setSelectedRowIndexes([]);
       setImportError(
         previewError instanceof Error
           ? previewError.message
@@ -91,6 +104,7 @@ export function ProjectImportPanel({
   const cancelPreview = () => {
     setPreviewFile(null);
     setPreviewRows([]);
+    setSelectedRowIndexes([]);
     setImportMessage("");
 
     if (fileInputRef.current) {
@@ -99,8 +113,8 @@ export function ProjectImportPanel({
   };
 
   const importPreview = async () => {
-    if (!previewFile) {
-      setImportError("Select a CSV file first");
+    if (!previewFile || selectedRowIndexes.length === 0) {
+      setImportError("Select at least one project to import");
       return;
     }
 
@@ -112,6 +126,7 @@ export function ProjectImportPanel({
 
     const formData = new FormData();
     formData.append("file", previewFile);
+    formData.append("selectedIndexes", JSON.stringify(selectedRowIndexes));
 
     const response = await fetch("/api/admin/projects/upload", {
       method: "POST",
@@ -138,6 +153,7 @@ export function ProjectImportPanel({
     );
     setPreviewFile(null);
     setPreviewRows([]);
+    setSelectedRowIndexes([]);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -153,6 +169,19 @@ export function ProjectImportPanel({
     if (file) {
       previewCsv(file);
     }
+  };
+
+  const allRowsSelected =
+    previewRows.length > 0 && selectedRowIndexes.length === previewRows.length;
+  const someRowsSelected =
+    selectedRowIndexes.length > 0 && !allRowsSelected;
+
+  const toggleRow = (rowIndex: number) => {
+    setSelectedRowIndexes((current) =>
+      current.includes(rowIndex)
+        ? current.filter((index) => index !== rowIndex)
+        : [...current, rowIndex],
+    );
   };
 
   return (
@@ -300,8 +329,8 @@ export function ProjectImportPanel({
                         Preview import
                       </h3>
                       <p className="mt-1 text-sm text-muted">
-                        {previewRows.length} project(s) found in{" "}
-                        {previewFile?.name}.
+                        {selectedRowIndexes.length} of {previewRows.length}{" "}
+                        project(s) selected from {previewFile?.name}.
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -309,9 +338,10 @@ export function ProjectImportPanel({
                         type="button"
                         loading={uploading}
                         loadingText="Importing"
+                        disabled={selectedRowIndexes.length === 0}
                         onClick={importPreview}
                       >
-                        Import
+                        Import selected
                       </Button>
                       <button
                         type="button"
@@ -327,6 +357,29 @@ export function ProjectImportPanel({
                     <table className="w-full min-w-[900px] text-left text-sm">
                       <thead className="border-b border-border bg-surface-muted text-xs uppercase text-muted">
                         <tr>
+                          <th className="w-12 px-4 py-3">
+                            <Checkbox
+                              checked={allRowsSelected}
+                              indeterminate={someRowsSelected}
+                              onChange={() =>
+                                setSelectedRowIndexes(
+                                  allRowsSelected
+                                    ? []
+                                    : previewRows.map((_, index) => index),
+                                )
+                              }
+                              size="small"
+                              disableRipple
+                              sx={checkboxStyles}
+                              slotProps={{
+                                input: {
+                                  "aria-label": allRowsSelected
+                                    ? "Unselect all projects"
+                                    : "Select all projects",
+                                },
+                              }}
+                            />
+                          </th>
                           <th className="px-4 py-3 font-semibold">Title</th>
                           <th className="px-4 py-3 font-semibold">Students</th>
                           <th className="px-4 py-3 font-semibold">Supervisor</th>
@@ -342,6 +395,20 @@ export function ProjectImportPanel({
                       <tbody className="divide-y divide-border">
                         {previewRows.map((row, index) => (
                           <tr key={`${row.title}-${index}`}>
+                            <td className="px-4 py-3">
+                              <Checkbox
+                                checked={selectedRowIndexes.includes(index)}
+                                onChange={() => toggleRow(index)}
+                                size="small"
+                                disableRipple
+                                sx={checkboxStyles}
+                                slotProps={{
+                                  input: {
+                                    "aria-label": `Select ${row.title}`,
+                                  },
+                                }}
+                              />
+                            </td>
                             <td className="px-4 py-3 font-medium text-ink">
                               {row.title}
                             </td>

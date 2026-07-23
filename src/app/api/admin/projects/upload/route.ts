@@ -6,6 +6,7 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get("file");
+    const selectedIndexesValue = formData.get("selectedIndexes");
 
     if (!(file instanceof File)) {
       return NextResponse.json(
@@ -15,7 +16,27 @@ export async function POST(request: Request) {
     }
 
     const rows = parseProjectCsv(await file.text());
-    const { projects, skippedCount } = await createProjectsFromCsvRows(rows);
+    const selectedIndexes =
+      typeof selectedIndexesValue === "string"
+        ? JSON.parse(selectedIndexesValue)
+        : rows.map((_, index) => index);
+
+    if (
+      !Array.isArray(selectedIndexes) ||
+      selectedIndexes.length === 0 ||
+      selectedIndexes.some(
+        (index) =>
+          !Number.isInteger(index) || index < 0 || index >= rows.length,
+      )
+    ) {
+      throw new Error("Select at least one valid project to import");
+    }
+
+    const selectedRows = Array.from(new Set<number>(selectedIndexes)).map(
+      (index) => rows[index],
+    );
+    const { projects, skippedCount } =
+      await createProjectsFromCsvRows(selectedRows);
 
     return NextResponse.json({ projects, skippedCount }, { status: 201 });
   } catch (error) {
