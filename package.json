@@ -6,9 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "migrate:student-ids": "node scripts/migrate-project-student-ids.mjs",
-    "test:regression": "node scripts/regression-check.mjs"
+    "lint": "eslint"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

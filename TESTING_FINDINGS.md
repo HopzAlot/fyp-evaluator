@@ -88,11 +88,10 @@ failures. Other server failures no longer clear the frontend user session.
 - `pnpm lint`: passed
 - `pnpm build`: passed, including all 21 generated pages
 - `pnpm audit --prod`: no known vulnerabilities
-- `pnpm migrate:student-ids`: idempotence check passed with 0 remaining records
-  to migrate
-- `pnpm test:regression`: passed against the live application
+- Student ID migration: completed with 0 remaining records to migrate
+- Live regression checks: passed against the live application
 
-The live regression test verified:
+The live regression checks verified:
 
 - Login rendering and unauthenticated route/API protection
 - Two concurrent student saves both persist in one evaluation document
@@ -104,8 +103,7 @@ The live regression test verified:
 - Normal project deletion removes evaluations
 - Retrying deletion cleans evaluations after a simulated partial failure
 
-The regression test used temporary database records and removed them in a
-`finally` cleanup block.
+The checks used temporary database records and removed them afterward.
 
 ## Database Migration
 
@@ -115,7 +113,7 @@ The initial migration updated:
 - 2 existing saved student evaluations with their matching stable IDs
 
 A second migration run changed 0 projects and 0 evaluations, confirming that
-the migration is safe to rerun.
+no records remained to migrate. The one-time migration helper was then removed.
 
 ## Remaining Coverage
 
