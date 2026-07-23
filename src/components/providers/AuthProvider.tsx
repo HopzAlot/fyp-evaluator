@@ -33,7 +33,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await fetch("/api/me", { cache: "no-store" });
 
         if (!response.ok) {
-          if (active) {
+          if (
+            active &&
+            (response.status === 401 || response.status === 403)
+          ) {
             setUser(null);
             router.replace("/login");
           }

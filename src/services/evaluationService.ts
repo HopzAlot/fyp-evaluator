@@ -145,6 +145,19 @@ function isMark(value: unknown): value is number {
   );
 }
 
+function normalizeStudentName(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function isDuplicateKeyError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === 11000
+  );
+}
+
 export async function savePhaseEvaluation(
   projectId: string,
   facultyId: string,
@@ -170,108 +183,175 @@ export async function savePhaseEvaluation(
     throw new Error("Invalid phase selected");
   }
 
-  const phase = await EvaluationPhaseModel.findById(phaseInput.phaseId)
-    .populate<{ plos: PloDocument[] }>({
+  const [phase, project, activeFaculty] = await Promise.all([
+    EvaluationPhaseModel.findById(phaseInput.phaseId).populate<{
+      plos: PloDocument[];
+    }>({
       path: "plos",
       options: { sort: { order: 1 } },
-    });
+    }),
+    ProjectModel.findOne({
+      _id: projectId,
+      deletionPending: { $ne: true },
+    }).select("students studentIds"),
+    UserModel.exists({
+      _id: facultyId,
+      role: "faculty",
+      status: "active",
+    }),
+  ]);
 
   if (!phase) {
     throw new Error("Evaluation phase not found");
   }
 
-  if (!Array.isArray(phaseInput.students) || phaseInput.students.length === 0) {
-    throw new Error("Student evaluations are required");
+  if (!project) {
+    throw new Error("Project not found");
+  }
+
+  if (!activeFaculty) {
+    throw new Error("Your faculty account is not active");
+  }
+
+  if (!Array.isArray(phaseInput.students) || phaseInput.students.length !== 1) {
+    throw new Error("Save one student evaluation at a time");
   }
 
   const populatedPhase = phase as unknown as PopulatedEvaluationPhase;
   const requiredPloIds = populatedPhase.plos.map((plo) => plo._id.toString());
-  const students = phaseInput.students.map((student) => {
-    const studentId = student.studentId.trim();
-    const studentName = student.studentName.trim();
+  const studentInput = phaseInput.students[0];
+  const studentId = studentInput.studentId.trim();
+  const studentName = studentInput.studentName.trim();
 
-    if (!studentId) {
-      throw new Error("Student id is required");
-    }
+  if (!studentId) {
+    throw new Error("Student id is required");
+  }
 
-    if (!studentName) {
-      throw new Error("Student name is required");
-    }
+  if (!studentName) {
+    throw new Error("Student name is required");
+  }
 
-    const scoresByPloId = new Map(
-      student.evaluations.map((score) => [score.ploId, score.obtainedMarks]),
-    );
-    const missingScore = requiredPloIds.some(
-      (ploId) => !scoresByPloId.has(ploId),
-    );
+  const projectStudentIndex = project.studentIds.indexOf(studentId);
 
-    if (missingScore) {
-      throw new Error("All PLO marks are required before saving");
-    }
+  if (
+    projectStudentIndex === -1 ||
+    normalizeStudentName(project.students[projectStudentIndex]) !==
+      normalizeStudentName(studentName)
+  ) {
+    throw new Error("Student does not belong to this project");
+  }
 
-    const scores = requiredPloIds.map((ploId) => {
-      const marks = scoresByPloId.get(ploId);
-
-      if (!isMark(marks)) {
-        throw new Error("PLO marks must be between 0 and 5");
-      }
-
-      return {
-        ploId: new Types.ObjectId(ploId),
-        obtainedMarks: marks,
-      };
-    });
-
-    return {
-      studentId,
-      studentName,
-      evaluations: scores,
-      totalMarks: scores.reduce(
-        (total, score) => total + score.obtainedMarks,
-        0,
-      ),
-    };
-  });
-  const projectObjectId = new Types.ObjectId(projectId);
-  const facultyObjectId = new Types.ObjectId(facultyId);
-  const phaseObjectId = new Types.ObjectId(phaseInput.phaseId);
-  const existingEvaluation = await EvaluationModel.findOne({
-    projectId: projectObjectId,
-    facultyId: facultyObjectId,
-    phaseId: phaseObjectId,
-  });
-  const studentsByName = new Map(
-    (existingEvaluation?.students ?? []).map((student) => [
-      (student.studentId || student.studentName).trim().toLowerCase(),
-      student,
+  const scoresByPloId = new Map(
+    studentInput.evaluations.map((score) => [
+      score.ploId,
+      score.obtainedMarks,
     ]),
   );
 
-  students.forEach((student) => {
-    studentsByName.set(student.studentId.trim().toLowerCase(), student);
-  });
+  if (
+    studentInput.evaluations.length !== requiredPloIds.length ||
+    scoresByPloId.size !== requiredPloIds.length ||
+    requiredPloIds.some((ploId) => !scoresByPloId.has(ploId))
+  ) {
+    throw new Error("All PLO marks are required before saving");
+  }
 
-  const evaluation = await EvaluationModel.findOneAndUpdate(
-    {
+  const scores = requiredPloIds.map((ploId) => {
+    const marks = scoresByPloId.get(ploId);
+
+    if (!isMark(marks)) {
+      throw new Error("PLO marks must be between 0 and 5");
+    }
+
+    return {
+      ploId: new Types.ObjectId(ploId),
+      obtainedMarks: marks,
+    };
+  });
+  const student = {
+    studentId,
+    studentName: project.students[projectStudentIndex],
+    evaluations: scores,
+    totalMarks: scores.reduce(
+      (total, score) => total + score.obtainedMarks,
+      0,
+    ),
+  };
+  const projectObjectId = new Types.ObjectId(projectId);
+  const facultyObjectId = new Types.ObjectId(facultyId);
+  const phaseObjectId = new Types.ObjectId(phaseInput.phaseId);
+  const previousPhaseIds = (
+    await EvaluationPhaseModel.find({ order: { $lt: populatedPhase.order } })
+      .sort({ order: 1 })
+      .select("_id")
+  ).map((previousPhase) => previousPhase._id);
+
+  if (previousPhaseIds.length > 0) {
+    const completedPreviousPhases = await EvaluationModel.countDocuments({
       projectId: projectObjectId,
       facultyId: facultyObjectId,
-      phaseId: phaseObjectId,
+      phaseId: { $in: previousPhaseIds },
+      students: { $elemMatch: { studentId } },
+    });
+
+    if (completedPreviousPhases !== previousPhaseIds.length) {
+      throw new Error("Complete the previous phases for this student first");
+    }
+  }
+
+  const evaluationKey = {
+    projectId: projectObjectId,
+    facultyId: facultyObjectId,
+    phaseId: phaseObjectId,
+  };
+  const submittedAt = new Date();
+  let evaluation = await EvaluationModel.findOneAndUpdate(
+    {
+      ...evaluationKey,
+      "students.studentId": { $ne: studentId },
     },
     {
-      $set: {
-        projectId: projectObjectId,
-        facultyId: facultyObjectId,
-        phaseId: phaseObjectId,
-        students: Array.from(studentsByName.values()),
-        submittedAt: new Date(),
-      },
+      $push: { students: student },
+      $set: { submittedAt },
     },
     {
-      new: true,
-      upsert: true,
+      returnDocument: "after",
       runValidators: true,
     },
   );
+
+  if (!evaluation) {
+    try {
+      evaluation = await EvaluationModel.create({
+        ...evaluationKey,
+        students: [student],
+        submittedAt,
+      });
+    } catch (error) {
+      if (!isDuplicateKeyError(error)) {
+        throw error;
+      }
+
+      evaluation = await EvaluationModel.findOneAndUpdate(
+        {
+          ...evaluationKey,
+          "students.studentId": { $ne: studentId },
+        },
+        {
+          $push: { students: student },
+          $set: { submittedAt },
+        },
+        {
+          returnDocument: "after",
+          runValidators: true,
+        },
+      );
+
+      if (!evaluation) {
+        throw new Error("This student evaluation has already been saved");
+      }
+    }
+  }
 
   await syncProjectStatus(projectId);
 
@@ -311,6 +391,7 @@ export async function buildEvaluationResultsExportHtml(phaseIds?: string[]) {
   ]);
   const projects = await ProjectModel.find({
     _id: { $in: evaluatedProjectIds },
+    deletionPending: { $ne: true },
   }).sort({ title: 1 });
   const exportPlos = plos.map(toEvaluationPlo);
   const exportPhases: EvaluationExportPhase[] = (

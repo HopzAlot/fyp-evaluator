@@ -129,7 +129,7 @@ export async function updateUserStatus(userId: string, status: UserStatus) {
   return UserModel.findOneAndUpdate(
     { _id: userId, role: "faculty" },
     { status },
-    { new: true },
+    { returnDocument: "after" },
   );
 }
 
@@ -148,7 +148,7 @@ export async function updateUserProfileFields(
       fullName: values.fullName ? normalizeText(values.fullName) : "",
       gender: values.gender ? normalizeGender(values.gender) : "",
     },
-    { new: true },
+    { returnDocument: "after" },
   );
 }
 

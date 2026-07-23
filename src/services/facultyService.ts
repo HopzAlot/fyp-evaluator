@@ -53,6 +53,6 @@ export async function updateFacultyProfile(
       designation: normalizeText(values.designation),
       gender: normalizeGender(values.gender),
     },
-    { new: true },
+    { returnDocument: "after" },
   );
 }

@@ -11,11 +11,13 @@ type Project = {
   projectKey: string;
   title: string;
   students: string[];
+  studentIds: string[];
   supervisor: string;
   coSupervisor: string;
   industrialPartner: string;
   sdg: string;
   status: ProjectStatus;
+  deletionPending: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -44,6 +46,14 @@ const ProjectSchema = new Schema<Project>(
         message: "A project can have at most 4 students",
       },
     },
+    studentIds: {
+      type: [String],
+      default: [],
+      validate: {
+        validator: (studentIds: string[]) => studentIds.length <= 4,
+        message: "A project can have at most 4 student ids",
+      },
+    },
     supervisor: {
       type: String,
       required: true,
@@ -68,6 +78,11 @@ const ProjectSchema = new Schema<Project>(
       type: String,
       enum: ["in progress", "completed"],
       default: "in progress",
+      required: true,
+    },
+    deletionPending: {
+      type: Boolean,
+      default: false,
       required: true,
     },
   },

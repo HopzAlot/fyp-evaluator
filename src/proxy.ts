@@ -9,6 +9,8 @@ import {
   verifyAccessToken,
   verifyRefreshToken,
 } from "@/lib/auth/jwt";
+import { connectDatabase } from "@/lib/db/mongoose";
+import { UserModel } from "@/models/User";
 import type { UserRole, UserStatus } from "@/types/auth";
 
 const authRoutes = ["/login", "/register"];
@@ -96,14 +98,34 @@ type AuthPayload = {
   status: UserStatus;
 };
 
-export function proxy(request: NextRequest) {
+async function getActiveRefreshPayload(payload: AuthPayload) {
+  await connectDatabase();
+  const user = await UserModel.findOne({
+    _id: payload.userId,
+    role: payload.role,
+    status: "active",
+  }).select("role status");
+
+  return user
+    ? {
+        userId: user._id.toString(),
+        role: user.role,
+        status: user.status,
+      }
+    : null;
+}
+
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const registered = request.nextUrl.searchParams.get("registered") === "1";
   const accessToken = request.cookies.get(accessTokenCookieName)?.value;
   const refreshToken = request.cookies.get(refreshTokenCookieName)?.value;
   const accessPayload = accessToken ? verifyAccessToken(accessToken) : null;
-  const refreshPayload =
+  const verifiedRefreshPayload =
     !accessPayload && refreshToken ? verifyRefreshToken(refreshToken) : null;
+  const refreshPayload = verifiedRefreshPayload
+    ? await getActiveRefreshPayload(verifiedRefreshPayload)
+    : null;
   const payload = accessPayload ?? refreshPayload;
   const isAuthRoute = authRoutes.includes(pathname);
   const isProtectedRoute = startsWithRoute(pathname, protectedRoutes);

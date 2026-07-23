@@ -8,6 +8,7 @@ import {
   accessTokenCookieOptions,
   accessTokenCookieName,
   getAuthTokens,
+  refreshTokenCookieName,
 } from "@/lib/auth/session";
 import { getFacultyByUserId } from "@/services/facultyService";
 import { getUserById, toAuthUser } from "@/services/userService";
@@ -20,8 +21,15 @@ export async function GET() {
   const payload = accessPayload ?? refreshPayload;
   const userAccount = payload ? await getUserById(payload.userId) : null;
 
-  if (!userAccount) {
-    return NextResponse.json({ message: "Not authenticated" }, { status: 401 });
+  if (!userAccount || userAccount.status !== "active") {
+    const response = NextResponse.json(
+      { message: "Not authenticated" },
+      { status: 401 },
+    );
+
+    response.cookies.delete(accessTokenCookieName);
+    response.cookies.delete(refreshTokenCookieName);
+    return response;
   }
 
   const faculty =

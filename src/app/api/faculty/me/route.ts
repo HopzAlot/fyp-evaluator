@@ -28,8 +28,15 @@ export async function PATCH(request: Request) {
 
     const userAccount = await getUserById(userId);
 
-    if (!userAccount) {
-      return NextResponse.json({ message: "User not found" }, { status: 404 });
+    if (
+      !userAccount ||
+      userAccount.role !== "faculty" ||
+      userAccount.status !== "active"
+    ) {
+      return NextResponse.json(
+        { message: "Your faculty account is not active" },
+        { status: 403 },
+      );
     }
 
     const updatedUser =

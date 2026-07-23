@@ -20,12 +20,47 @@ type EvaluatedStudentPhase = {
     projectId: Types.ObjectId;
     phaseId: Types.ObjectId;
     studentId: string;
-    studentName: string;
   };
 };
 
 function normalizeProjectKeyPart(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function createStudentIds(count: number) {
+  return Array.from({ length: count }, () => new Types.ObjectId().toString());
+}
+
+function getStudentIdsForUpdate(
+  currentStudents: string[],
+  currentStudentIds: string[],
+  nextStudents: string[],
+) {
+  const idsByName = new Map<string, string[]>();
+
+  currentStudents.forEach((student, index) => {
+    const name = normalizeProjectKeyPart(student);
+    const ids = idsByName.get(name) ?? [];
+
+    ids.push(currentStudentIds[index] ?? new Types.ObjectId().toString());
+    idsByName.set(name, ids);
+  });
+
+  return nextStudents.map((student) => {
+    const ids = idsByName.get(normalizeProjectKeyPart(student));
+
+    return ids?.shift() ?? new Types.ObjectId().toString();
+  });
+}
+
+function haveSameStudents(first: string[], second: string[]) {
+  const firstNames = first.map(normalizeProjectKeyPart).sort();
+  const secondNames = second.map(normalizeProjectKeyPart).sort();
+
+  return (
+    firstNames.length === secondNames.length &&
+    firstNames.every((student, index) => student === secondNames[index])
+  );
 }
 
 export function buildProjectKey(
@@ -82,8 +117,9 @@ function getEvaluatedStudentsByPhase(evaluations: EvaluationDocument[]) {
     ) ?? new Set<string>();
 
     evaluation.students.forEach((student) => {
-      studentKeys.add(student.studentId.trim().toLowerCase());
-      studentKeys.add(student.studentName.trim().toLowerCase());
+      if (student.studentId) {
+        studentKeys.add(student.studentId.trim().toLowerCase());
+      }
     });
     evaluatedStudentsByPhase.set(evaluation.phaseId.toString(), studentKeys);
   });
@@ -113,10 +149,11 @@ function getProjectEvaluationProgress(
 
   phases.forEach((phase) => {
     const evaluatedStudents = evaluatedStudentsByPhase.get(phase.id);
-    const completedStudents = project.students.filter((studentName, index) =>
-      evaluatedStudents?.has(`${project._id.toString()}-${index + 1}`) ||
-      evaluatedStudents?.has(studentName.trim().toLowerCase()),
-    ).length;
+    const completedStudents = project.students.filter((_, index) => {
+      const studentId = project.studentIds[index];
+
+      return studentId && evaluatedStudents?.has(studentId.toLowerCase());
+    }).length;
 
     completedStudentPhases += completedStudents;
 
@@ -145,11 +182,9 @@ export async function syncProjectStatus(projectId: string) {
   await connectDatabase();
 
   const [project, phases, evaluations] = await Promise.all([
-    ProjectModel.findById(projectId),
+    ProjectModel.findOne({ _id: projectId, deletionPending: { $ne: true } }),
     EvaluationPhaseModel.find().sort({ order: 1 }).select("title"),
-    EvaluationModel.find({ projectId }).select(
-      "projectId phaseId students.studentId students.studentName",
-    ),
+    EvaluationModel.find({ projectId }).select("projectId phaseId students.studentId"),
   ]);
 
   if (!project) {
@@ -182,6 +217,7 @@ export function toProject(project: ProjectDocument): Project {
     id: project._id.toString(),
     title: project.title,
     students: project.students,
+    studentIds: project.studentIds,
     supervisor: project.supervisor,
     coSupervisor: project.coSupervisor,
     industrialPartner: project.industrialPartner,
@@ -192,7 +228,9 @@ export function toProject(project: ProjectDocument): Project {
 
 async function getFacultyProjectsWithEvaluationProgress(facultyId: string) {
   const [projects, phases, evaluatedStudentPhases] = await Promise.all([
-    ProjectModel.find().sort({ createdAt: -1 }),
+    ProjectModel.find({ deletionPending: { $ne: true } }).sort({
+      createdAt: -1,
+    }),
     EvaluationPhaseModel.find().sort({ order: 1 }).select("title"),
     EvaluationModel.aggregate<EvaluatedStudentPhase>([
       { $match: { facultyId: new Types.ObjectId(facultyId) } },
@@ -203,7 +241,6 @@ async function getFacultyProjectsWithEvaluationProgress(facultyId: string) {
             projectId: "$projectId",
             phaseId: "$phaseId",
             studentId: "$students.studentId",
-            studentName: "$students.studentName",
           },
         },
       },
@@ -227,7 +264,6 @@ async function getFacultyProjectsWithEvaluationProgress(facultyId: string) {
     const studentKeys = projectPhases.get(phaseId) ?? new Set<string>();
 
     studentKeys.add((_id.studentId ?? "").trim().toLowerCase());
-    studentKeys.add((_id.studentName ?? "").trim().toLowerCase());
     projectPhases.set(phaseId, studentKeys);
     evaluatedStudentsByProject.set(projectId, projectPhases);
   });
@@ -268,7 +304,10 @@ export async function getFacultyProjectById(projectId: string) {
 
   await connectDatabase();
 
-  const project = await ProjectModel.findById(projectId);
+  const project = await ProjectModel.findOne({
+    _id: projectId,
+    deletionPending: { $ne: true },
+  });
 
   return project ? toProject(project) : null;
 }
@@ -276,9 +315,11 @@ export async function getFacultyProjectById(projectId: string) {
 export async function getFacultyDashboardSummary() {
   await connectDatabase();
 
-  const projects = (await ProjectModel.find().sort({ createdAt: -1 })).map(
-    toProject,
-  );
+  const projects = (
+    await ProjectModel.find({ deletionPending: { $ne: true } }).sort({
+      createdAt: -1,
+    })
+  ).map(toProject);
 
   return {
     totalProjects: projects.length,
@@ -298,6 +339,7 @@ export async function createProjectsFromCsvRows(rows: ProjectInput[]) {
 
   const projectRows = rows.map((row) => ({
     ...row,
+    studentIds: createStudentIds(row.students.length),
     projectKey: buildProjectKey(row),
   }));
   const uniqueRows = Array.from(
@@ -339,11 +381,22 @@ export async function deleteProjectById(projectId: string) {
   }
 
   await connectDatabase();
-  const result = await ProjectModel.deleteOne({ _id: projectId });
+  const project = await ProjectModel.findByIdAndUpdate(
+    projectId,
+    { $set: { deletionPending: true } },
+    { returnDocument: "after" },
+  );
 
-  if (result.deletedCount) {
-    await EvaluationModel.deleteMany({ projectId });
+  await EvaluationModel.deleteMany({ projectId });
+
+  if (!project) {
+    return 0;
   }
+
+  const result = await ProjectModel.deleteOne({
+    _id: projectId,
+    deletionPending: true,
+  });
 
   return result.deletedCount;
 }
@@ -358,6 +411,29 @@ export async function updateProjectById(
 
   await connectDatabase();
   await backfillMissingProjectKeys();
+
+  const currentProject = await ProjectModel.findById(projectId);
+
+  if (!currentProject) {
+    return null;
+  }
+
+  if (currentProject.deletionPending) {
+    throw new Error("Project deletion is pending. Retry deleting the project");
+  }
+
+  const hasEvaluations = Boolean(
+    await EvaluationModel.exists({ projectId: currentProject._id }),
+  );
+
+  if (
+    hasEvaluations &&
+    !haveSameStudents(currentProject.students, values.students)
+  ) {
+    throw new Error(
+      "Students cannot be added, removed, or renamed after evaluation has started",
+    );
+  }
 
   const projectKey = buildProjectKey(values);
   const existingProjects = await ProjectModel.find({
@@ -377,10 +453,15 @@ export async function updateProjectById(
     projectId,
     {
       ...values,
+      studentIds: getStudentIdsForUpdate(
+        currentProject.students,
+        currentProject.studentIds,
+        values.students,
+      ),
       projectKey,
     },
     {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     },
   );
@@ -400,11 +481,17 @@ export async function deleteProjectsByIds(projectIds: string[]) {
   }
 
   await connectDatabase();
-  const result = await ProjectModel.deleteMany({ _id: { $in: validIds } });
+  await ProjectModel.updateMany(
+    { _id: { $in: validIds } },
+    { $set: { deletionPending: true } },
+  );
 
-  if (result.deletedCount) {
-    await EvaluationModel.deleteMany({ projectId: { $in: validIds } });
-  }
+  await EvaluationModel.deleteMany({ projectId: { $in: validIds } });
+
+  const result = await ProjectModel.deleteMany({
+    _id: { $in: validIds },
+    deletionPending: true,
+  });
 
   return result.deletedCount;
 }

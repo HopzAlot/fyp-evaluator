@@ -2,158 +2,124 @@
 
 **Test date:** July 23, 2026
 
-## Scope
+**Status:** All previously reported code and backend findings resolved
 
-The testing covered:
+## Problems and Fixes
 
-- TypeScript and ESLint checks
-- Production build
-- Production dependency audit
-- Authentication and role-based route protection
-- Access-token renewal through the refresh token
-- Admin and faculty page rendering
-- Evaluation export and phase filtering
-- Invalid request validation
-- MongoDB relationship and data-integrity checks
-- Focused review of authentication, projects, evaluations, imports, exports, and deletion
+### 1. Production build failed on the login page
 
-No destructive requests were performed against the database.
+**Problem:** `pnpm build` compiled the application but failed while
+prerendering `/login`. `LoginForm` used `useSearchParams()` without a React
+Suspense boundary.
 
-## Findings
+**Fix:** Wrapped `LoginForm` in `Suspense` inside the login page. The complete
+production build now succeeds.
 
-### 1. High: Production build fails
+### 2. Production dependencies had known vulnerabilities
 
-`pnpm build` compiles successfully but fails while prerendering `/login`.
-`LoginForm` uses `useSearchParams()` without a React Suspense boundary.
+**Problem:** Next.js `16.2.10` and its transitive dependencies contained known
+high and moderate security vulnerabilities, including a proxy bypass.
 
-Relevant files:
+**Fix:** Upgraded Next.js and `eslint-config-next` to `16.2.11`. Patched
+transitive `sharp` and `postcss` versions through pnpm overrides. The production
+audit now reports no known vulnerabilities.
 
-- `src/components/layout/auth/LoginForm.tsx:20`
-- `src/app/(auth)/login/page.tsx:11`
+### 3. Evaluation rules were enforced only by the frontend
 
-### 2. High: Next.js has known security vulnerabilities
+**Problem:** A crafted API request could overwrite saved marks, skip earlier
+phases, submit a student outside the project, use a nonexistent project ID, or
+send an incorrect PLO score set.
 
-The project uses Next.js `16.2.10`. The dependency audit reported five high
-and six moderate vulnerabilities, including a proxy bypass. The relevant
-Next.js fixes are available in `16.2.11`.
+**Fix:** Added backend validation for project existence, student membership,
+phase order, saved-evaluation immutability, assigned PLOs, and marks from 0 to
+5. The API now accepts exactly one student evaluation at a time.
 
-Relevant file:
+### 4. Student IDs depended on array position
 
-- `package.json:21`
+**Problem:** Student IDs were generated as `projectId-index`. Reordering or
+replacing students could make old evaluation marks appear against a different
+student.
 
-### 3. High: Evaluation rules are not enforced completely by the backend
+**Fix:** Added stable project-owned student IDs and migrated existing projects
+and evaluations. Reordering students preserves their IDs. Adding, removing, or
+renaming students is blocked after evaluation begins.
 
-The frontend prevents editing saved evaluations and locks phases in order, but
-the API service does not enforce all of those rules. A crafted request could:
+### 5. Concurrent evaluation saves could lose marks
 
-- Resubmit and overwrite saved student marks
-- Submit a later phase before earlier phases
-- Submit a student who does not belong to the project
-- Save an evaluation using a valid but nonexistent project ObjectId
+**Problem:** The service read the existing students, merged them in memory, and
+replaced the complete array. Simultaneous requests could overwrite each other.
 
-Relevant file:
+**Fix:** Each student is now appended atomically with MongoDB `$push`. The
+duplicate-key retry path safely handles two requests creating the same phase
+document at the same time.
 
-- `src/services/evaluationService.ts:148`
+### 6. Deactivated faculty sessions could remain active
 
-### 4. High: Student IDs depend on array position
+**Problem:** The proxy trusted the role and status stored in the JWT. A
+deactivated faculty account could continue using its existing refresh token.
 
-Student IDs are generated as `projectId-index`. If an admin reorders or
-replaces students after evaluations exist, an old ID could point to a different
-student and display the wrong saved marks.
+**Fix:** Refresh-token renewal now checks the current user status in MongoDB.
+`/api/me` clears cookies for inactive accounts, while faculty profile and
+evaluation writes also verify active status.
 
-Relevant files:
+### 7. Project cascade deletion was not recoverable
 
-- `src/app/(main)/projects/[projectId]/page.tsx:42`
-- `src/services/projectService.ts:376`
+**Problem:** The project was deleted before its evaluations. If evaluation
+deletion failed, retrying did not clean the orphaned records because the
+project no longer existed.
 
-### 5. Medium: Concurrent evaluation saves can lose data
+**Fix:** Deletion first marks the project as pending, hides it from faculty,
+and removes its evaluations before removing the project itself. If either
+database deletion fails, the project remains visible to the admin after
+refresh, allowing the same delete action to safely finish the cleanup.
 
-The service reads the existing evaluation, merges students in memory, and then
-replaces the complete `students` array. Two simultaneous saves can read the
-same old value, causing the later request to overwrite the first request.
+### 8. Temporary `/api/me` failures appeared as logout
 
-Relevant file:
+**Problem:** `AuthProvider` redirected to `/login` for every unsuccessful
+`/api/me` response, including temporary server or database errors.
 
-- `src/services/evaluationService.ts:238`
+**Fix:** The provider now treats only `401` and `403` as authentication
+failures. Other server failures no longer clear the frontend user session.
 
-### 6. Medium: Deactivating faculty does not revoke an existing session
+## Verification Results
 
-The proxy trusts the role and status stored in JWTs. A faculty member who is
-already logged in can remain authenticated after an admin changes the account
-to inactive, potentially until the refresh token expires.
+- `pnpm exec tsc --noEmit`: passed
+- `pnpm lint`: passed
+- `pnpm build`: passed, including all 21 generated pages
+- `pnpm audit --prod`: no known vulnerabilities
+- `pnpm migrate:student-ids`: idempotence check passed with 0 remaining records
+  to migrate
+- `pnpm test:regression`: passed against the live application
 
-Relevant file:
+The live regression test verified:
 
-- `src/proxy.ts:102`
+- Login rendering and unauthenticated route/API protection
+- Two concurrent student saves both persist in one evaluation document
+- Saved marks cannot be submitted again
+- Later phases cannot be submitted before earlier phases
+- Forged students and nonexistent projects are rejected
+- Project students are locked once evaluation begins
+- Inactive access and refresh tokens are rejected
+- Normal project deletion removes evaluations
+- Retrying deletion cleans evaluations after a simulated partial failure
 
-### 7. Medium: Cascade deletion is not recoverable after a partial failure
+The regression test used temporary database records and removed them in a
+`finally` cleanup block.
 
-The project is deleted before its evaluations. If evaluation deletion fails,
-retrying the request will not remove the orphan evaluations because the project
-is already gone and its next `deletedCount` is zero.
+## Database Migration
 
-Relevant file:
+The initial migration updated:
 
-- `src/services/projectService.ts:336`
-- `src/services/projectService.ts:395`
+- 6 projects with stable student IDs
+- 2 existing saved student evaluations with their matching stable IDs
 
-### 8. Medium: Any `/api/me` failure can appear as a logout
+A second migration run changed 0 projects and 0 evaluations, confirming that
+the migration is safe to rerun.
 
-`AuthProvider` redirects to `/login` for every unsuccessful `/api/me` response,
-including temporary server or database errors. Only authentication failures
-should be treated as logout.
+## Remaining Coverage
 
-Relevant file:
-
-- `src/components/providers/AuthProvider.tsx:35`
-
-## Passed Checks
-
-- TypeScript completed without errors.
-- ESLint completed without errors.
-- Twenty-two runtime smoke and invalid-input tests passed.
-- Unauthenticated admin and faculty routes redirected to login.
-- Faculty accounts could not access admin pages or APIs.
-- Admin accounts were redirected away from faculty routes.
-- Admin and faculty pages returned successful responses.
-- Phase-filtered evaluation export returned an Excel response.
-- Invalid export phase IDs were rejected.
-- Malformed login, registration, profile, evaluation, upload, password, status,
-  and bulk-deletion requests were rejected.
-- An expired access token with a valid refresh token returned `200` and issued a
-  new access cookie.
-
-## Database Audit
-
-The current MongoDB data passed the integrity audit:
-
-- 8 evaluation phases
-- 12 PLOs
-- Phase weightages total 100%
-- No missing faculty profiles
-- No orphan faculty profiles
-- No duplicate project keys
-- No orphan evaluation documents
-- No duplicate project/faculty/phase evaluation documents
-- No student ID and name mismatches
-- No invalid PLO scores
-- No incorrect phase PLO score sets
-
-## Remaining Coverage Gaps
-
-- No browser automation or Playwright setup currently exists.
-- Responsive layouts and interactive visual states were not screenshot-tested.
-- Destructive operations were reviewed but not executed against live data.
-- Concurrent evaluation submissions were not executed because they could alter
-  existing evaluation records.
-
-## Recommended Fix Order
-
-1. Fix the `/login` production build failure.
-2. Upgrade Next.js and affected transitive dependencies.
-3. Enforce evaluation immutability, student membership, and phase order in the backend.
-4. Store stable student identifiers instead of deriving them from array positions.
-5. Make student evaluation updates concurrency-safe.
-6. Revalidate or revoke sessions when faculty status changes.
-7. Make project and evaluation deletion recoverable or transactional.
-8. Redirect to login only for genuine authentication failures.
+- Browser automation and screenshot-based responsive testing have not been run
+  yet, as visual testing is the next planned stage.
+- An access token already issued before deactivation remains cryptographically
+  valid for at most its 15-minute lifetime. Sensitive faculty writes and token
+  refreshes still check current database status immediately.

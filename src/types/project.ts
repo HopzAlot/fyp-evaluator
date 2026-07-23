@@ -18,6 +18,7 @@ export type ProjectInput = {
 
 export type Project = ProjectInput & {
   id: string;
+  studentIds: string[];
   status: ProjectStatus;
   evaluationProgress?: ProjectEvaluationProgress;
 };
