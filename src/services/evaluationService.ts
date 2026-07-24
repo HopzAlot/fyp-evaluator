@@ -47,9 +47,11 @@ function formatExportNumber(value: number | null) {
     return "";
   }
 
-  return Number.isInteger(value)
-    ? String(value)
-    : value.toFixed(6).replace(/\.?0+$/, "");
+  const rounded = Math.round(value * 100) / 100;
+
+  return Number.isInteger(rounded)
+    ? String(rounded)
+    : rounded.toFixed(2).replace(/0$/, "");
 }
 
 function toEvaluationPlo(plo: PloDocument): EvaluationPlo {
@@ -439,6 +441,12 @@ export async function buildEvaluationResultsExportHtml(phaseIds?: string[]) {
     );
 
     for (const { studentId, studentName } of exportStudents) {
+      let studentTotalScore = 0;
+      const selectedPhaseWeight = exportPhases.reduce(
+        (total, phase) => total + phase.weightage,
+        0,
+      );
+
       rows.push(
         `<tr class="student"><td>${escapeHtml(studentName)}</td>${exportPlos
           .map((plo) => `<td>${escapeHtml(plo.code)}</td>`)
@@ -501,14 +509,24 @@ export async function buildEvaluationResultsExportHtml(phaseIds?: string[]) {
               : [],
           ),
         ).size;
+        const phaseScore = average(phaseWeightedScores);
+
+        if (phaseScore !== null) {
+          studentTotalScore += phaseScore;
+        }
 
         rows.push(
           `<tr><td class="phase">${escapeHtml(`${phase.title} (${phase.weightage}%)`)}</td>${phaseCells}<td>${formatExportNumber(
-            average(phaseWeightedScores),
+            phaseScore,
           )}</td><td>${facultyCount || ""}</td></tr>`,
         );
       }
 
+      rows.push(
+        `<tr class="total"><td colspan="13">Total Score</td><td>${formatExportNumber(
+          studentTotalScore,
+        )} / ${formatExportNumber(selectedPhaseWeight)}</td><td></td></tr>`,
+      );
       rows.push('<tr class="spacer"><td colspan="15"></td></tr>');
     }
   }
@@ -528,6 +546,7 @@ export async function buildEvaluationResultsExportHtml(phaseIds?: string[]) {
       .student td { font-weight: 700; }
       .phase { font-weight: 700; min-width: 240px; }
       .marked { background: #082967; color: #ffffff; }
+      .total td { background: #f3f4f6; font-weight: 700; }
       .spacer td { border: 0; height: 18px; }
     </style>
   </head>
