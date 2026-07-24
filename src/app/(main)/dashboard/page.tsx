@@ -1,8 +1,16 @@
 import Link from "next/link";
+import { verifyAccessToken, verifyRefreshToken } from "@/lib/auth/jwt";
+import { getAuthTokens } from "@/lib/auth/session";
 import { getFacultyDashboardSummary } from "@/services/projectService";
 
 export default async function DashboardPage() {
-  const summary = await getFacultyDashboardSummary();
+  const { accessToken, refreshToken } = await getAuthTokens();
+  const payload =
+    (accessToken ? verifyAccessToken(accessToken) : null) ??
+    (refreshToken ? verifyRefreshToken(refreshToken) : null);
+  const summary = await getFacultyDashboardSummary(
+    payload?.role === "faculty" ? payload.userId : "",
+  );
   const stats = [
     {
       label: "Available projects",
@@ -15,9 +23,9 @@ export default async function DashboardPage() {
       detail: "Across imported groups",
     },
     {
-      label: "Industry linked",
-      value: summary.industryProjects,
-      detail: "Projects with industrial partners",
+      label: "Projects started",
+      value: summary.startedProjects,
+      detail: "With evaluation progress",
     },
   ];
 
@@ -60,10 +68,10 @@ export default async function DashboardPage() {
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
             <h2 className="text-base font-semibold text-ink">
-              Recent projects
+              Project evaluation progress
             </h2>
             <p className="mt-1 text-sm text-muted">
-              Latest imported project records
+              Your progress across recently imported projects
             </p>
           </div>
           <span className="rounded-md bg-accent-soft px-3 py-1 text-sm font-semibold text-ink">
@@ -71,26 +79,52 @@ export default async function DashboardPage() {
           </span>
         </div>
 
-        <div className="mt-5 divide-y divide-border">
+        <div className="mt-4 space-y-2">
           {summary.recentProjects.length > 0 ? (
-            summary.recentProjects.map((project) => (
-              <Link
-                key={project.id}
-                href={`/projects/${project.id}`}
-                className="block py-3 transition hover:bg-surface-muted"
-              >
-                <p className="text-sm font-semibold text-ink">
-                  {project.title}
-                </p>
-                <p className="mt-1 text-sm text-muted">
-                  {project.students.length} student(s) - Supervisor:{" "}
-                  {project.supervisor}
-                </p>
-              </Link>
-            ))
+            summary.recentProjects.map((project) => {
+              const progress = project.evaluationProgress;
+
+              return (
+                <Link
+                  key={project.id}
+                  href={`/projects/${project.id}`}
+                  className="block rounded-md px-2 py-1.5 transition hover:bg-surface-muted"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-ink">
+                        {project.title}
+                      </p>
+                      <p className="mt-1 truncate text-xs text-muted">
+                        {progress?.currentPhase
+                          ? `Current: ${progress.currentPhase}`
+                          : progress?.totalPhases
+                            ? "All phases completed"
+                            : "Not started"}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-sm font-semibold text-ink">
+                        {progress?.percentage ?? 0}%
+                      </p>
+                      <p className="mt-1 text-xs text-muted">
+                        {progress?.completedPhases ?? 0}/
+                        {progress?.totalPhases ?? 0} phases
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-muted">
+                    <span
+                      className="block h-full rounded-full bg-accent"
+                      style={{ width: `${progress?.percentage ?? 0}%` }}
+                    />
+                  </div>
+                </Link>
+              );
+            })
           ) : (
             <p className="py-3 text-sm text-muted">
-              No projects imported yet.
+              No projects available yet.
             </p>
           )}
         </div>

@@ -77,35 +77,6 @@ export function buildProjectKey(
   ].join("::");
 }
 
-async function backfillMissingProjectKeys() {
-  const projectsWithKeys = await ProjectModel.find({
-    projectKey: { $exists: true, $ne: "" },
-  }).select("projectKey");
-  const usedKeys = new Set(
-    projectsWithKeys.map((project) => project.projectKey),
-  );
-  const projects = await ProjectModel.find({
-    $or: [{ projectKey: { $exists: false } }, { projectKey: "" }],
-  }).select("title students supervisor");
-
-  await Promise.all(
-    projects.map((project) => {
-      const projectKey = buildProjectKey(project);
-
-      if (usedKeys.has(projectKey)) {
-        return Promise.resolve();
-      }
-
-      usedKeys.add(projectKey);
-
-      return ProjectModel.updateOne(
-        { _id: project._id },
-        { $set: { projectKey } },
-      );
-    }),
-  );
-}
-
 function getEvaluatedStudentsByPhase(evaluations: EvaluationDocument[]) {
   const evaluatedStudentsByPhase = new Map<string, Set<string>>();
 
@@ -279,7 +250,6 @@ async function getFacultyProjectsWithEvaluationProgress(facultyId: string) {
 
 export async function getAdminProjects() {
   await connectDatabase();
-  await backfillMissingProjectKeys();
   const pendingProjectIds = await ProjectModel.find({
     deletionPending: true,
   }).distinct("_id");
@@ -328,14 +298,18 @@ export async function getFacultyProjectById(projectId: string) {
   return project ? toProject(project) : null;
 }
 
-export async function getFacultyDashboardSummary() {
-  await connectDatabase();
+export async function getFacultyDashboardSummary(facultyId: string) {
+  if (!isValidObjectId(facultyId)) {
+    return {
+      totalProjects: 0,
+      totalStudents: 0,
+      startedProjects: 0,
+      recentProjects: [],
+    };
+  }
 
-  const projects = (
-    await ProjectModel.find({ deletionPending: { $ne: true } }).sort({
-      createdAt: -1,
-    })
-  ).map(toProject);
+  await connectDatabase();
+  const projects = await getFacultyProjectsWithEvaluationProgress(facultyId);
 
   return {
     totalProjects: projects.length,
@@ -343,15 +317,15 @@ export async function getFacultyDashboardSummary() {
       (count, project) => count + project.students.length,
       0,
     ),
-    industryProjects: projects.filter((project) => project.industrialPartner)
-      .length,
+    startedProjects: projects.filter(
+      (project) => (project.evaluationProgress?.percentage ?? 0) > 0,
+    ).length,
     recentProjects: projects.slice(0, 3),
   };
 }
 
 export async function createProjectsFromCsvRows(rows: ProjectInput[]) {
   await connectDatabase();
-  await backfillMissingProjectKeys();
 
   const projectRows = rows.map((row) => ({
     ...row,
@@ -361,13 +335,8 @@ export async function createProjectsFromCsvRows(rows: ProjectInput[]) {
   const uniqueRows = Array.from(
     new Map(projectRows.map((row) => [row.projectKey, row])).values(),
   );
-  const existingProjects = await ProjectModel.find().select(
-    "projectKey title students supervisor",
-  );
   const existingKeys = new Set(
-    existingProjects.map((project) =>
-      project.projectKey || buildProjectKey(project),
-    ),
+    await ProjectModel.distinct<string>("projectKey"),
   );
   const rowsToInsert = uniqueRows.filter(
     (row) => !existingKeys.has(row.projectKey),
@@ -432,7 +401,6 @@ export async function updateProjectById(
   }
 
   await connectDatabase();
-  await backfillMissingProjectKeys();
 
   const currentProject = await ProjectModel.findById(projectId);
 
@@ -470,12 +438,10 @@ export async function updateProjectById(
     );
 
   const projectKey = buildProjectKey(values);
-  const existingProjects = await ProjectModel.find({
+  const duplicateProject = await ProjectModel.exists({
     _id: { $ne: projectId },
-  }).select("projectKey title students supervisor");
-  const duplicateProject = existingProjects.some(
-    (project) => (project.projectKey || buildProjectKey(project)) === projectKey,
-  );
+    projectKey,
+  });
 
   if (duplicateProject) {
     throw new Error(
