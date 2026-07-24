@@ -2,20 +2,26 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  CircleUserRound,
+  FolderKanban,
+  LayoutDashboard,
+  UsersRound,
+} from "lucide-react";
 import { Brand } from "@/components/ui/Brand";
 import { useMainLayout } from "@/components/layout/main/MainLayoutContext";
 import { useAuth } from "@/components/providers/AuthProvider";
 
 const facultyNavItems = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Projects", href: "/projects" },
-  { label: "Profile", href: "/profile" },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Projects", href: "/projects", icon: FolderKanban },
+  { label: "Profile", href: "/profile", icon: CircleUserRound },
 ];
 
 const adminNavItems = [
-  { label: "Dashboard", href: "/admin" },
-  { label: "Projects", href: "/admin/projects" },
-  { label: "Manage Users", href: "/admin/faculty" },
+  { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { label: "Projects", href: "/admin/projects", icon: FolderKanban },
+  { label: "Manage Users", href: "/admin/faculty", icon: UsersRound },
 ];
 
 export function MainSidebar() {
@@ -48,6 +54,7 @@ export function MainSidebar() {
 
         <nav className="mt-8 space-y-1">
           {navItems.map((item) => {
+            const Icon = item.icon;
             const active =
               pathname === item.href ||
               (!["/admin", "/dashboard"].includes(item.href) &&
@@ -58,22 +65,18 @@ export function MainSidebar() {
                 key={item.href}
                 href={item.href}
                 onClick={closeSidebar}
-                className={`block rounded-md px-3 py-2 text-sm font-medium transition ${
+                className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition ${
+                  sidebarCollapsed ? "lg:justify-center lg:px-2" : ""
+                } ${
                   active
                     ? "bg-accent-soft text-ink"
                     : "text-muted hover:bg-surface-muted hover:text-ink"
                 }`}
                 title={sidebarCollapsed ? item.label : undefined}
               >
+                <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
                 <span className={sidebarCollapsed ? "lg:hidden" : ""}>
                   {item.label}
-                </span>
-                <span
-                  className={`hidden text-center text-sm font-semibold ${
-                    sidebarCollapsed ? "lg:block" : ""
-                  }`}
-                >
-                  {item.label[0]}
                 </span>
               </Link>
             );
