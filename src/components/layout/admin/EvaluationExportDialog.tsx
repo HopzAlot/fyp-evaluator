@@ -50,7 +50,7 @@ export function EvaluationExportDialog({
         aria-labelledby="evaluation-export-title"
         className="w-full max-w-lg rounded-lg border border-border bg-surface shadow-xl"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+        <div className="border-b border-border px-5 py-4">
           <div>
             <h2
               id="evaluation-export-title"
@@ -62,14 +62,6 @@ export function EvaluationExportDialog({
               Choose which evaluation phases to include in the Excel sheet.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={exporting}
-            className="h-9 rounded-md border border-border px-3 text-sm font-semibold text-ink transition hover:bg-surface-muted disabled:cursor-not-allowed disabled:text-muted"
-          >
-            Close
-          </button>
         </div>
 
         <div className="space-y-4 px-5 py-4">
