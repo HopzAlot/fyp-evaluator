@@ -20,6 +20,8 @@ type AdminProjectsManagerProps = {
   phases: EvaluationPhaseOption[];
 };
 
+type ProjectStatusFilter = "all" | ProjectStatus;
+
 const statusStyles: Record<ProjectStatus, string> = {
   "in progress": "border-highlight/30 bg-highlight-soft text-ink",
   completed: "border-accent/30 bg-accent-soft text-accent",
@@ -32,6 +34,8 @@ export function AdminProjectsManager({
   const { isRefreshing, refreshRoute } = useRouteRefresh();
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] =
+    useState<ProjectStatusFilter>("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingProject, setEditingProject] = useState<Project | null>(
     null,
@@ -44,8 +48,11 @@ export function AdminProjectsManager({
   const [message, setMessage] = useState("");
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const filteredProjects = useMemo(
-    () => filterProjects(projects, searchTerm),
-    [projects, searchTerm],
+    () =>
+      filterProjects(projects, searchTerm).filter(
+        (project) => statusFilter === "all" || project.status === statusFilter,
+      ),
+    [projects, searchTerm, statusFilter],
   );
   const selectableFilteredProjects = filteredProjects.filter(
     (project) => !project.deletionPending,
@@ -448,6 +455,18 @@ export function AdminProjectsManager({
             placeholder="Search projects"
             className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm text-ink outline-none transition placeholder:text-muted focus:border-primary focus:ring-2 focus:ring-primary/15 sm:w-72"
           />
+          <select
+            value={statusFilter}
+            onChange={(event) =>
+              setStatusFilter(event.target.value as ProjectStatusFilter)
+            }
+            className="h-11 rounded-md border border-border bg-background px-3 text-sm font-medium text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+            aria-label="Filter projects by status"
+          >
+            <option value="all">All statuses</option>
+            <option value="in progress">In progress</option>
+            <option value="completed">Completed</option>
+          </select>
           <Button
             type="button"
             loading={isRefreshing}
@@ -488,8 +507,8 @@ export function AdminProjectsManager({
           columns={columns}
           data={filteredProjects}
           emptyMessage={
-            searchTerm.trim()
-              ? "No projects match your search"
+            searchTerm.trim() || statusFilter !== "all"
+              ? "No projects match your filters"
               : "No projects imported yet"
           }
           getRowKey={(project) => project.id}
