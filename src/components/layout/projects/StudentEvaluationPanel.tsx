@@ -194,6 +194,7 @@ export function StudentEvaluationPanel({
     useState<Record<string, boolean>>(initialSavedPhaseKeys);
   const [saveError, setSaveError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const evaluationPanelRef = useRef<HTMLDivElement>(null);
   const allowBackNavigationRef = useRef(false);
   const selectedPhase =
     phases.find((phase) => phase.key === selectedPhaseKey) ?? phases[0];
@@ -486,6 +487,13 @@ export function StudentEvaluationPanel({
       setSelectedPhaseKey(nextUnsavedPhase.key);
     }
 
+    requestAnimationFrame(() => {
+      evaluationPanelRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+
     console.log("Student phase evaluation saved", {
       studentName: selectedStudentName,
       phaseKey: selectedPhaseKey,
@@ -501,7 +509,10 @@ export function StudentEvaluationPanel({
   }
 
   return (
-    <div className="space-y-4 caret-transparent">
+    <div
+      ref={evaluationPanelRef}
+      className="scroll-mt-20 space-y-4 caret-transparent"
+    >
       <EvaluationPhaseTabs
         phases={phases}
         selectedPhaseKey={selectedPhaseKey}
